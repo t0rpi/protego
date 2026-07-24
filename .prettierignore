@@ -13,3 +13,4 @@ packages/ui/src/tokens.ts
 packages/ui/src/tokens.css
 packages/config/src/i18n/strings.ro.json
 packages/config/src/i18n/strings.en.json
+packages/supabase/src/database.types.ts
