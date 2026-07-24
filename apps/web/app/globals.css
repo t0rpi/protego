@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "@protego/ui/tokens.css";
+
+@theme {
+  --color-ink: var(--ink);
+  --color-void: var(--void);
+  --color-graphite: var(--graphite);
+  --color-paper: var(--paper);
+  --color-steel: var(--steel);
+  --color-gold: var(--gold);
+  --color-gold-hi: var(--gold-hi);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+
+  --font-display: var(--font-display);
+  --font-ui: var(--font-ui);
+}
+
+body {
+  background: var(--surface-app);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}

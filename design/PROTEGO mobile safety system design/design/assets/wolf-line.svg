@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none" aria-label="Lupul Dacic PROTEGO">
+  <path d="M18 62 C14 46 22 30 38 24 C46 21 50 15 51 10 C55 16 54 21 52 24 C62 22 74 26 80 36 C84 43 84 50 82 55 L70 50 C72 46 70 41 65 39 C69 45 68 50 64 53 L50 46 C53 54 50 60 44 62 L34 56 C36 62 33 67 28 68 L18 62 Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"></path>
+  <path d="M22 68 C34 78 56 80 70 72 C76 68 80 62 82 55" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
+  <circle cx="42" cy="34" r="2.6" fill="currentColor"></circle>
+</svg>

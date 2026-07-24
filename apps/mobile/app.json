@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "PROTEGO",
+    "slug": "protego",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "protego",
+    "userInterfaceStyle": "dark",
+    "web": {
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

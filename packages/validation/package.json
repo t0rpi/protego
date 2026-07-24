@@ -1,0 +1,23 @@
+{
+  "name": "@protego/validation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTEGO shared zod validation schemas (client/server). M0: scaffold only, no booking/payment schemas yet.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@protego/domain": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

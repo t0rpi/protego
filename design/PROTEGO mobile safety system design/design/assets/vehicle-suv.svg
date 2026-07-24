@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120" viewBox="0 0 240 120" aria-label="Vehicul PROTEGO — siluetă generică SUV negru premium (fără marcă/model)">
+  
+  <g>
+    <path d="M30 80 q0 -16 14 -20 l10 -24 q3 -6 11 -6 h78 q8 0 11 6 l10 24 q26 4 26 20 v8 q0 6 -6 6 h-148 q-6 0 -6 -6 z" fill="#15171B" stroke="#2A2E35" stroke-width="2"></path>
+    <path d="M62 54 l8 -19 q2 -3 6 -3 h26 v22 z" fill="#1C1F24"></path>
+    <path d="M110 32 h28 q4 0 6 3 l8 19 h-42 z" fill="#1C1F24"></path>
+    <circle cx="72" cy="92" r="15" fill="#0C0D0F" stroke="#2A2E35" stroke-width="2"></circle>
+    <circle cx="72" cy="92" r="6" fill="#1C1F24" stroke="#C9A227" stroke-width="1.5"></circle>
+    <circle cx="176" cy="92" r="15" fill="#0C0D0F" stroke="#2A2E35" stroke-width="2"></circle>
+    <circle cx="176" cy="92" r="6" fill="#1C1F24" stroke="#C9A227" stroke-width="1.5"></circle>
+    <rect x="188" y="64" width="14" height="4" rx="2" fill="#C9A227" opacity=".85"></rect>
+    <rect x="32" y="66" width="10" height="3" rx="1.5" fill="#6B7178"></rect>
+  </g>
+</svg>

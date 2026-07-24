@@ -1,0 +1,21 @@
+{
+  "name": "@protego/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTEGO shared config: i18n resources (RO default, EN secondary), non-secret constants.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "strings:sync": "node ./scripts/sync-strings.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@protego/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTEGO shared business logic (pricing engine, mission state machine, rules). M0: scaffold only, no logic.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

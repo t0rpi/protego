@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" aria-label="PROTEGO app icon">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0%" r="90%">
+      <stop offset="0" stop-color="#181307"></stop><stop offset=".55" stop-color="#0C0D0F"></stop>
+    </radialGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EADDA9"></stop><stop offset=".5" stop-color="#E6C868"></stop><stop offset="1" stop-color="#C9A227"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"></rect>
+  <g transform="translate(192,172) scale(6.4)">
+    <path d="M18 62 C14 46 22 30 38 24 C46 21 50 15 51 10 C55 16 54 21 52 24 C62 22 74 26 80 36 C84 43 84 50 82 55 L70 50 C72 46 70 41 65 39 C69 45 68 50 64 53 L50 46 C53 54 50 60 44 62 L34 56 C36 62 33 67 28 68 L18 62 Z" stroke="url(#g1)" stroke-width="3.4" fill="none" stroke-linejoin="round" stroke-linecap="round"></path>
+    <path d="M22 68 C34 78 56 80 70 72 C76 68 80 62 82 55" stroke="url(#g1)" stroke-width="3.4" fill="none" stroke-linecap="round"></path>
+    <circle cx="42" cy="34" r="2.6" fill="#E6C868"></circle>
+  </g>
+  <text x="512" y="872" text-anchor="middle" font-family="Cinzel, serif" font-weight="700" font-size="104" letter-spacing="34" fill="url(#g1)">PROTEGO</text>
+</svg>

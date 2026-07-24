@@ -1,0 +1,4 @@
+-- PROTEGO — local seed data.
+-- M0: no tables exist yet (see docs/architecture/repository-audit.md §3).
+-- Seed data (pricing_config demo values for Oradea, services catalog, etc.)
+-- is added starting M1/M2, once the corresponding migrations land.

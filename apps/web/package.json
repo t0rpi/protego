@@ -1,0 +1,33 @@
+{
+  "name": "@protego/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTEGO web — dispatcher + admin (+ client-web), Next.js App Router.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet — apps/web\" && exit 0"
+  },
+  "dependencies": {
+    "@protego/config": "workspace:*",
+    "@protego/domain": "workspace:*",
+    "@protego/ui": "workspace:*",
+    "@protego/validation": "workspace:*",
+    "next": "15.1.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "15.1.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2"
+  }
+}

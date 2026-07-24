@@ -1,0 +1,51 @@
+/* PROTEGO design tokens — CSS custom properties (same values as tokens.json)
+   Dark theme IS the brand theme. Prices are NOT tokens (admin-configured). */
+:root {
+  /* color: surfaces */
+  --ink: #0C0D0F; --graphite: #15171B; --graphite-2: #1C1F24;
+  --line: #2A2E35; --line-gold: #3A341F; --void: #050506;
+  /* color: text */
+  --paper: #F2F3F4; --steel: #9AA0A8; --steel-dim: #6B7178;
+  /* color: gold (the only brand accent) */
+  --gold: #C9A227; --gold-hi: #E6C868; --gold-pale: #EADDA9;
+  --gold-dim: rgba(201,162,39,.14); --gold-dim-2: rgba(201,162,39,.22);
+  /* color: semantic */
+  --danger: #E5484D; --danger-dim: rgba(229,72,77,.12);
+  --ok: #4CAF7D; --ok-dim: rgba(76,175,125,.12);
+  --warn: #DE8B3F; --warn-dim: rgba(222,139,63,.12);
+  /* aliases */
+  --surface-app: var(--ink); --surface-card: var(--graphite); --surface-raised: var(--graphite-2);
+  --border: var(--line); --border-gold: var(--line-gold);
+  --text-primary: var(--paper); --text-secondary: var(--steel); --text-tertiary: var(--steel-dim);
+  --text-on-gold: #161307;
+  --accent: var(--gold); --accent-hi: var(--gold-hi); --accent-soft: var(--gold-dim);
+  /* mission status — review ("în verificare") is ALWAYS gold, never red */
+  --status-confirmed: var(--gold); --status-active: var(--gold-hi); --status-review: var(--gold);
+  --status-done: var(--ok); --status-sos: var(--danger);
+  /* gradients */
+  --grad-gold: linear-gradient(135deg, #C9A227 0%, #E6C868 55%, #C9A227 100%);
+  --grad-gold-text: linear-gradient(135deg, #EADDA9, #E6C868 40%, #C9A227);
+  --grad-trust: linear-gradient(135deg, #161207, #14161A 60%);
+  --grad-quote: linear-gradient(160deg, #191408, #15171B 70%);
+  --grad-splash: radial-gradient(120% 60% at 50% 0%, #181307 0%, #0C0D0F 55%);
+  /* shadows */
+  --shadow-frame: 0 0 80px rgba(0,0,0,.8);
+  --shadow-sos: 0 6px 24px rgba(229,72,77,.45);
+  --shadow-gold: 0 6px 24px rgba(201,162,39,.25);
+  /* typography */
+  --font-display: 'Cinzel', 'Times New Roman', serif;   /* wordmark + monograms ONLY */
+  --font-ui: 'Manrope', system-ui, -apple-system, sans-serif;
+  --fs-micro: 11px; --fs-caption: 12px; --fs-small: 13.5px; --fs-body: 15px; --fs-title: 17px;
+  --fs-h3: 20px; --fs-h2: 24px; --fs-h1: 28px; --fs-display: 34px; --fs-num: 40px;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700; --fw-heavy: 800;
+  --ls-wordmark: .34em; --ls-wordmark-sm: .3em; --ls-eyebrow: .18em; --ls-seg: .14em; --ls-code: 3px;
+  --lh-tight: 1.25; --lh-body: 1.45; --lh-note: 1.5;
+  /* spacing */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --gutter: 20px; --tap-min: 44px;
+  /* radius + border */
+  --r-sm: 12px; --r-md: 14px; --r-lg: 16px; --r-xl: 18px; --r-pill: 999px; --bw: 1px;
+  /* motion */
+  --dur-press: .15s; --dur-ui: .2s; --dur-screen: .35s; --dur-toast: .3s;
+  --ease-ui: ease; --press-scale: .985;
+}
