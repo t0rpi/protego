@@ -256,18 +256,23 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project. PROTEGO auth is phone OTP + email
-# (MASTERPROMPT §5A) — enabled once M1 (Conturi & roluri) builds the actual auth flow.
-enable_signup = false
+# (MASTERPROMPT §5A) — enabled starting M1 (Conturi & roluri).
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # Template for sending OTP to users
 template = "Your code is {{ `{{ .Code }}` }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# Local/dev only — fixed OTP codes for these numbers, no real SMS sent, no
+# SMS provider (e.g. Twilio, see [auth.sms.twilio] below) required to
+# develop or test the phone-OTP flow. Never real numbers; never used
+# outside `supabase start`. Swapping in a real provider later is a config
+# change only (enable [auth.sms.twilio] + credentials), not a code change.
+[auth.sms.test_otp]
+40700000001 = "123456"
+40700000002 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

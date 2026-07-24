@@ -19,12 +19,7 @@ import path from "node:path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 
-const DESIGN_DIR = path.join(
-  repoRoot,
-  "design",
-  "PROTEGO mobile safety system design",
-  "design"
-);
+const DESIGN_DIR = path.join(repoRoot, "design", "PROTEGO mobile safety system design", "design");
 
 const OUT_DIR = path.join(__dirname, "..", "src", "i18n");
 mkdirSync(OUT_DIR, { recursive: true });

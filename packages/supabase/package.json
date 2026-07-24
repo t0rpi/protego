@@ -1,0 +1,22 @@
+{
+  "name": "@protego/supabase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTEGO shared Supabase client factory + generated Database types.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "types:generate": "supabase gen types typescript --linked --schema public > src/database.types.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet — packages/supabase\" && exit 0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2"
+  }
+}

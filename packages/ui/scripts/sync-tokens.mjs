@@ -19,12 +19,7 @@ import path from "node:path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 
-const DESIGN_DIR = path.join(
-  repoRoot,
-  "design",
-  "PROTEGO mobile safety system design",
-  "design"
-);
+const DESIGN_DIR = path.join(repoRoot, "design", "PROTEGO mobile safety system design", "design");
 const TOKENS_JSON_SRC = path.join(DESIGN_DIR, "tokens.json");
 const TOKENS_CSS_SRC = path.join(DESIGN_DIR, "tokens.css");
 
@@ -79,9 +74,7 @@ function parseLinearGradient(css) {
     const stopMatch = part.match(/^(#[0-9A-Fa-f]{3,8}|rgba?\([^)]+\))\s*(\d+(?:\.\d+)?%)?$/);
     if (!stopMatch) return { color: part };
     const [, color, locationPct] = stopMatch;
-    return locationPct
-      ? { color, location: Number.parseFloat(locationPct) / 100 }
-      : { color };
+    return locationPct ? { color, location: Number.parseFloat(locationPct) / 100 } : { color };
   });
   return { angle: angle.trim(), stops };
 }

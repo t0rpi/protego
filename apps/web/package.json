@@ -14,8 +14,10 @@
   "dependencies": {
     "@protego/config": "workspace:*",
     "@protego/domain": "workspace:*",
+    "@protego/supabase": "workspace:*",
     "@protego/ui": "workspace:*",
     "@protego/validation": "workspace:*",
+    "@supabase/ssr": "^0.12.3",
     "next": "15.1.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"

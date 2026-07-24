@@ -6,3 +6,10 @@ build
 .turbo
 coverage
 pnpm-lock.yaml
+
+# generated/copied verbatim by sync scripts — reformatting here would just
+# be undone on the next `tokens:sync` / `strings:sync` run
+packages/ui/src/tokens.ts
+packages/ui/src/tokens.css
+packages/config/src/i18n/strings.ro.json
+packages/config/src/i18n/strings.en.json

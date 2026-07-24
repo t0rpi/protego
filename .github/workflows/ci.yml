@@ -34,3 +34,24 @@ jobs:
 
       - name: Test
         run: pnpm run test
+
+  supabase-rls-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Start Supabase (applies migrations + seed)
+        run: supabase start
+
+      - name: Run pgTAP RLS tests
+        run: supabase test db
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop

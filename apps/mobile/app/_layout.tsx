@@ -1,11 +1,17 @@
+import "../lib/i18n";
 import { Stack } from "expo-router";
+import { AuthProvider } from "../lib/auth-context";
 
 /**
- * Root layout. M0 scope: minimal Stack shell only — dark theming via
- * @protego/ui tokens, font loading (Cinzel/Manrope) and real navigation
- * structure land with the first real screens (M1+), alongside packages/ui's
- * component library (see design/HANDOFF.md §3).
+ * Root layout. M1 adds i18n init + auth session context, both consumed by
+ * the (auth) screens. Font loading (Cinzel/Manrope) and the component
+ * library land later, alongside packages/ui's real components (see
+ * design/HANDOFF.md §3) — not needed yet for functional auth screens.
  */
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </AuthProvider>
+  );
 }

@@ -18,7 +18,11 @@ describe("i18n RO/EN key parity", () => {
     const missingInEn = roKeys.filter((k) => !enKeys.includes(k));
     const missingInRo = enKeys.filter((k) => !roKeys.includes(k));
 
-    expect(missingInEn, `keys present in RO but missing in EN: ${missingInEn.join(", ")}`).toEqual([]);
-    expect(missingInRo, `keys present in EN but missing in RO: ${missingInRo.join(", ")}`).toEqual([]);
+    expect(missingInEn, `keys present in RO but missing in EN: ${missingInEn.join(", ")}`).toEqual(
+      []
+    );
+    expect(missingInRo, `keys present in EN but missing in RO: ${missingInRo.join(", ")}`).toEqual(
+      []
+    );
   });
 });

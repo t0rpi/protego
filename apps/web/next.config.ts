@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     "@protego/config",
     "@protego/domain",
     "@protego/validation",
+    "@protego/supabase",
   ],
 };
 
