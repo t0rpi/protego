@@ -19,6 +19,8 @@ select is(
 
 select throws_ok(
   format('insert into public.audit_log (action, entity) values (%L, %L)', 'fake', 'profiles'),
+  '42501',
+  null,
   'no role can insert into audit_log directly — only log_audit_event() (SECURITY DEFINER) can'
 );
 
@@ -31,6 +33,8 @@ select ok(
 
 select throws_ok(
   format('delete from public.audit_log where entity_id = %L', :'alice_id'::text),
+  '42501',
+  null,
   'even admin cannot delete audit_log rows directly — no grant exists for it'
 );
 

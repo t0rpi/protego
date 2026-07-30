@@ -37,6 +37,8 @@ select throws_ok(
     'insert into public.protected_persons (owner_id, full_name) values (%L, %L)',
     :'alice_id'::text, 'Malicious insert'
   ),
+  '42501',
+  null,
   'client cannot insert a protected person owned by someone else'
 );
 

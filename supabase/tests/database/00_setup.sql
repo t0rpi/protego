@@ -2,8 +2,14 @@
 -- functions defined here need to persist across the other numbered test
 -- files in this directory, which each run in their own transaction.
 -- Local/dev-only: never applied outside `supabase test db`.
+--
+-- pg_prove treats every .sql file under supabase/tests/database as a TAP
+-- source, so this file needs a valid plan/finish too, even though its
+-- real job is defining shared fixtures, not asserting anything.
 
 create extension if not exists pgtap with schema extensions;
+
+select plan(1);
 
 create schema if not exists tests;
 
@@ -58,3 +64,19 @@ begin
   reset role;
 end;
 $$;
+
+-- Once a test file calls tests.authenticate_as() the first time, the
+-- session's active role becomes 'authenticated' for the rest of the
+-- transaction (that's the point — it's simulating a real request). Any
+-- *subsequent* call to a tests.* function in that same file (e.g.
+-- switching to a second persona) is then made AS 'authenticated', not
+-- postgres — and schema-qualified calls require USAGE on the schema
+-- itself, which is not granted to any role by default. Without this,
+-- only the first tests.* call in a file (made while still superuser)
+-- succeeds; every later one fails with "permission denied for schema tests".
+grant usage on schema tests to authenticated, anon;
+grant execute on all functions in schema tests to authenticated, anon;
+
+select ok(true, 'shared test helpers (tests.*) loaded');
+
+select * from finish();

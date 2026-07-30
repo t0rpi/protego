@@ -27,13 +27,19 @@ select lives_ok(
   'client can update own full_name'
 );
 
+-- throws_ok(sql, errcode, errmsg, description): errmsg is NULL here since
+-- we only care about the SQLSTATE, not the exact Postgres wording.
 select throws_ok(
   format('update public.profiles set role = %L where id = %L', 'admin', :'alice_id'::text),
+  '42501',
+  null,
   'client cannot change own role — column grant denies it, not just RLS'
 );
 
 select throws_ok(
   format('update public.profiles set verification_level = 2 where id = %L', :'alice_id'::text),
+  '42501',
+  null,
   'client cannot self-grant verification_level 2 — column grant denies it'
 );
 
@@ -47,9 +53,13 @@ select is(
 
 set local role anon;
 
-select is(
-  (select count(*) from public.profiles)::int,
-  0,
+-- anon has no SELECT grant on profiles at all (only `authenticated` does —
+-- see profiles_and_roles.sql), so this fails at the grant level before RLS
+-- is even evaluated: a hard permission error, not a silently empty result.
+select throws_ok(
+  'select count(*) from public.profiles',
+  '42501',
+  null,
   'anon (unauthenticated) has zero access to profiles'
 );
 

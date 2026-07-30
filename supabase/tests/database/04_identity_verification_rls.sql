@@ -34,11 +34,15 @@ select is(
 
 select tests.authenticate_as(:'alice_id'::uuid);
 
--- No UPDATE policy exists at all on this table (see migration comment) —
--- RLS silently filters the row out rather than raising an error.
-select lives_ok(
+-- No UPDATE grant exists at all on this table for `authenticated` (only
+-- select/insert — see identity_verification.sql), so this fails at the
+-- grant level with a hard permission error, before any RLS policy would
+-- even be consulted.
+select throws_ok(
   format('update public.identity_verifications set status = %L where id = %L', 'approved', :'verification_id'::text),
-  'client''s own direct update attempt executes without error'
+  '42501',
+  null,
+  'client''s own direct update attempt is denied'
 );
 
 select is(
@@ -47,8 +51,13 @@ select is(
   'status remains pending — the client could not actually self-approve'
 );
 
+-- The function's own role check does `raise exception` with no explicit
+-- SQLSTATE, so plpgsql's default P0001 (raise_exception) applies here —
+-- not 42501, since this isn't a grant/RLS denial but an application-level check.
 select throws_ok(
   format('select public.review_identity_verification(%L, %L, %L)', :'verification_id'::text, 'approved', 'self-approval attempt'),
+  'P0001',
+  null,
   'client cannot call review_identity_verification themselves'
 );
 
@@ -68,7 +77,7 @@ select is(
 select tests.authenticate_as(:'alice_id'::uuid);
 
 select is(
-  (select verification_level from public.profiles where id = :'alice_id'::uuid),
+  (select verification_level from public.profiles where id = :'alice_id'::uuid)::int,
   2,
   'client''s verification_level is now 2 after dispatcher approval'
 );
