@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOverageQuote, computeQuote } from "./engine";
+import { computeOverageQuote, computeQuote, isWeekendPricingWindow } from "./engine";
 import type { PricingConfig } from "./types";
 
 // Mirrors the v2.3 Hourly/Escort config shape (PROTEGO_MASTERPROMPT_v2.3.md
@@ -161,5 +161,32 @@ describe("computeOverageQuote", () => {
     ]);
     expect(overage.total).toBe(157.3);
     expect(overage.laborComponent).toBe(130);
+  });
+});
+
+// 2026-08-03 is a confirmed Monday (used as the ISO week anchor
+// elsewhere in this project's pgTAP fixtures) — so 08-07 is Friday,
+// 08-08 Saturday, 08-09 Sunday, 08-10 the following Monday.
+describe("isWeekendPricingWindow (v2.3 §21: Fri 20:00 -> Sun 24:00)", () => {
+  it("is false on Friday before 20:00", () => {
+    expect(isWeekendPricingWindow(new Date(2026, 7, 7, 19, 59))).toBe(false);
+  });
+
+  it("is true on Friday at/after 20:00", () => {
+    expect(isWeekendPricingWindow(new Date(2026, 7, 7, 20, 0))).toBe(true);
+    expect(isWeekendPricingWindow(new Date(2026, 7, 7, 23, 30))).toBe(true);
+  });
+
+  it("is true all day Saturday and Sunday", () => {
+    expect(isWeekendPricingWindow(new Date(2026, 7, 8, 3, 0))).toBe(true);
+    expect(isWeekendPricingWindow(new Date(2026, 7, 9, 23, 59))).toBe(true);
+  });
+
+  it("is false again once Monday starts (Sunday 24:00 boundary)", () => {
+    expect(isWeekendPricingWindow(new Date(2026, 7, 10, 0, 0))).toBe(false);
+  });
+
+  it("is false on a plain weekday", () => {
+    expect(isWeekendPricingWindow(new Date(2026, 7, 5, 14, 0))).toBe(false);
   });
 });

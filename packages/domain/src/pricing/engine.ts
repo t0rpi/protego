@@ -23,6 +23,22 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/**
+ * v2.3 §21: the weekend coefficient window is Friday 20:00 through
+ * Sunday 24:00 — mirrors public.is_weekend_pricing_window() (supabase/
+ * migrations/20260731140001_weekend_coefficient_window.sql), added
+ * after the SQL side shipped with a Sat/Sun-only bug in M5. No caller
+ * in this codebase computes `isWeekend` from a real Date yet (the SQL
+ * function is the only live call site so far) — this exists so any
+ * future client-side quote preview reaches for this instead of
+ * reinventing the same check incorrectly.
+ */
+export function isWeekendPricingWindow(date: Date): boolean {
+  const day = date.getDay(); // 0=Sunday ... 6=Saturday
+  if (day === 6 || day === 0) return true;
+  return day === 5 && date.getHours() >= 20;
+}
+
 function combinedCoefficient(
   config: Pick<PricingConfig, "coefNight" | "coefWeekend" | "coefUrgent" | "coefCap">,
   input: Pick<QuoteInput, "isNight" | "isWeekend" | "isUrgent">

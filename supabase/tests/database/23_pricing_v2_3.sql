@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(13);
 
 -- Protect Ride: flat base + per-km, vehicle bundled in, no agent/vehicle
 -- lines at all (v2.3 §16/§19).
@@ -68,6 +68,34 @@ select is(
   (select (public.compute_overage_quote('hourly', 'Oradea', 1, 2, false, false, false) ->> 'total')::numeric),
   314.60,
   'overage bills only incremental agent time + VAT: 130*2=260, +21% VAT = 314.60'
+);
+
+-- M6 housekeeping: is_weekend_pricing_window() (v2.3 Sec21: Fri 20:00 ->
+-- Sun 24:00, not just Sat/Sun as create_quote_for_mission()/
+-- request_mission_overage() originally computed it in M5).
+-- is_weekend_pricing_window() reads extract(isodow/hour from ...) in
+-- the SESSION's timezone (UTC on this DB) — using a +00 offset here so
+-- the literal's stated hour and the function's extracted hour always
+-- agree, regardless of what timezone a future session default becomes.
+select ok(
+  not public.is_weekend_pricing_window('2026-08-07 19:59:00+00'::timestamptz),
+  'Friday before 20:00 is not yet the weekend window'
+);
+
+select ok(
+  public.is_weekend_pricing_window('2026-08-07 20:00:00+00'::timestamptz),
+  'Friday at/after 20:00 enters the weekend window'
+);
+
+select ok(
+  public.is_weekend_pricing_window('2026-08-08 03:00:00+00'::timestamptz)
+  and public.is_weekend_pricing_window('2026-08-09 23:59:00+00'::timestamptz),
+  'Saturday and Sunday are weekend all day'
+);
+
+select ok(
+  not public.is_weekend_pricing_window('2026-08-10 00:00:00+00'::timestamptz),
+  'the window ends at Sunday 24:00 (Monday 00:00) — Monday itself is not weekend'
 );
 
 select * from finish();
