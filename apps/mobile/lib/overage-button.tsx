@@ -3,6 +3,7 @@ import { Pressable, Text } from "react-native";
 import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { createOveragePayment } from "./payments";
 import { bookingStyles as s } from "./booking-styles";
+import { hasStripePublishableKey, PaymentErrorBoundary, StripeKeyMissing } from "./stripe-key-guard";
 
 /**
  * Self-contained, same reasoning as lib/payment-step.tsx: `useStripe()`
@@ -23,10 +24,16 @@ export function OverageButton({
   label: string;
   onError: (message: string) => void;
 }) {
+  if (!hasStripePublishableKey()) {
+    return <StripeKeyMissing />;
+  }
+
   return (
-    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""}>
-      <OverageButtonInner missionId={missionId} hours={hours} label={label} onError={onError} />
-    </StripeProvider>
+    <PaymentErrorBoundary>
+      <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""}>
+        <OverageButtonInner missionId={missionId} hours={hours} label={label} onError={onError} />
+      </StripeProvider>
+    </PaymentErrorBoundary>
   );
 }
 

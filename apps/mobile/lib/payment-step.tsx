@@ -5,6 +5,7 @@ import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { supabase } from "./supabase";
 import { authorizeMissionPayment } from "./payments";
 import { bookingStyles as s } from "./booking-styles";
+import { hasStripePublishableKey, PaymentErrorBoundary, StripeKeyMissing } from "./stripe-key-guard";
 
 /**
  * Self-contained payment step, deliberately its own component (not
@@ -25,10 +26,16 @@ export function PaymentStep({
   missionId: string;
   onSuccess: (verificationCode: string | null) => void;
 }) {
+  if (!hasStripePublishableKey()) {
+    return <StripeKeyMissing />;
+  }
+
   return (
-    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""}>
-      <PaymentStepInner missionId={missionId} onSuccess={onSuccess} />
-    </StripeProvider>
+    <PaymentErrorBoundary>
+      <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""}>
+        <PaymentStepInner missionId={missionId} onSuccess={onSuccess} />
+      </StripeProvider>
+    </PaymentErrorBoundary>
   );
 }
 
