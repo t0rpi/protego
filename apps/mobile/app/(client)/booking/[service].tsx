@@ -303,10 +303,15 @@ export default function BookingWizardScreen() {
                 <Text style={s.quoteTotal}>{verificationCode}</Text>
               ) : null}
               <Text style={s.note}>{t("agentAssigned.codeHint")}</Text>
+              {missionId ? (
+                <Pressable style={s.button} onPress={() => router.push(`/mission/${missionId}`)}>
+                  <Text style={s.buttonText}>{t("agentAssigned.track")}</Text>
+                </Pressable>
+              ) : null}
             </>
           )}
-          <Pressable style={s.button} onPress={() => router.replace("/")}>
-            <Text style={s.buttonText}>{t("common.close")}</Text>
+          <Pressable style={s.ghostButton} onPress={() => router.replace("/")}>
+            <Text style={s.ghostButtonText}>{t("common.close")}</Text>
           </Pressable>
         </ScrollView>
       </View>

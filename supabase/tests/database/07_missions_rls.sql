@@ -109,6 +109,13 @@ select throws_ok(
 
 select tests.authenticate_as(:'dana_id'::uuid);
 
+-- M4 (dispatcher.level2Gate): confirming a high-risk mission also
+-- requires a logged dispatcher call — see 22_high_risk_gate_and_handover_rls.sql
+-- for the dedicated gate tests; this fixture just needs the call logged
+-- so this M2-era test's original assertion still holds.
+insert into public.call_intents (mission_id, initiated_by, target_user_id, purpose)
+values (:'risky_mission_id'::uuid, :'dana_id'::uuid, :'alice_id'::uuid, 'high_risk_review_call');
+
 select lives_ok(
   format('update public.missions set status = %L where id = %L', 'confirmed', :'risky_mission_id'::text),
   'a dispatcher CAN confirm a high-risk mission out of review — the only allowed path'

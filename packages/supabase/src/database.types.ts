@@ -171,6 +171,65 @@ export type Database = {
         }
         Relationships: []
       }
+      call_intents: {
+        Row: {
+          created_at: string
+          id: string
+          initiated_by: string
+          mission_id: string | null
+          purpose: string
+          shield_event_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          initiated_by: string
+          mission_id?: string | null
+          purpose: string
+          shield_event_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          mission_id?: string | null
+          purpose?: string
+          shield_event_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_intents_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_intents_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_intents_shield_event_id_fkey"
+            columns: ["shield_event_id"]
+            isOneToOne: false
+            referencedRelation: "shield_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_intents_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           created_at: string
@@ -309,6 +368,45 @@ export type Database = {
           },
         ]
       }
+      mission_chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          mission_id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          mission_id: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          mission_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_chat_messages_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_offers: {
         Row: {
           agent_id: string
@@ -391,6 +489,90 @@ export type Database = {
             foreignKeyName: "mission_reports_mission_id_fkey"
             columns: ["mission_id"]
             isOneToOne: true
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          mission_id: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          mission_id: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          mission_id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_share_links_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_tracking: {
+        Row: {
+          agent_id: string
+          id: string
+          lat: number
+          lng: number
+          mission_id: string
+          recorded_at: string
+        }
+        Insert: {
+          agent_id: string
+          id?: string
+          lat: number
+          lng: number
+          mission_id: string
+          recorded_at?: string
+        }
+        Update: {
+          agent_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          mission_id?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_tracking_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
             referencedRelation: "missions"
             referencedColumns: ["id"]
           },
@@ -537,6 +719,83 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          event: Database["public"]["Enums"]["notification_event"]
+          id: string
+          mission_id: string | null
+          payload: Json | null
+          provider_status: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          event: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          mission_id?: string | null
+          payload?: Json | null
+          provider_status?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          event?: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          mission_id?: string | null
+          payload?: Json | null
+          provider_status?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          push_enabled: boolean
+          sms_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           commission_rate: number | null
@@ -561,6 +820,24 @@ export type Database = {
           id?: string
           insurance?: string | null
           license_no?: string | null
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
         }
         Relationships: []
       }
@@ -700,6 +977,35 @@ export type Database = {
           },
         ]
       }
+      push_tokens: {
+        Row: {
+          created_at: string
+          expo_push_token: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expo_push_token: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expo_push_token?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           breakdown: Json
@@ -793,6 +1099,117 @@ export type Database = {
           wave?: number
         }
         Relationships: []
+      }
+      shield_events: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          event_type: Database["public"]["Enums"]["shield_event_type"]
+          id: string
+          journal: string | null
+          lat: number | null
+          lng: number | null
+          mission_id: string | null
+          protocol_steps: Json
+          resolved_at: string | null
+          source: Database["public"]["Enums"]["shield_event_source"]
+          status: Database["public"]["Enums"]["shield_event_status"]
+          triggered_by: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["shield_event_type"]
+          id?: string
+          journal?: string | null
+          lat?: number | null
+          lng?: number | null
+          mission_id?: string | null
+          protocol_steps?: Json
+          resolved_at?: string | null
+          source: Database["public"]["Enums"]["shield_event_source"]
+          status?: Database["public"]["Enums"]["shield_event_status"]
+          triggered_by: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["shield_event_type"]
+          id?: string
+          journal?: string | null
+          lat?: number | null
+          lng?: number | null
+          mission_id?: string | null
+          protocol_steps?: Json
+          resolved_at?: string | null
+          source?: Database["public"]["Enums"]["shield_event_source"]
+          status?: Database["public"]["Enums"]["shield_event_status"]
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shield_events_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shield_events_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shield_events_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_handovers: {
+        Row: {
+          active_mission_ids: string[]
+          created_at: string
+          dispatcher_id: string
+          id: string
+          note: string | null
+          pending_high_risk_mission_ids: string[]
+          unresolved_sos_ids: string[]
+        }
+        Insert: {
+          active_mission_ids?: string[]
+          created_at?: string
+          dispatcher_id: string
+          id?: string
+          note?: string | null
+          pending_high_risk_mission_ids?: string[]
+          unresolved_sos_ids?: string[]
+        }
+        Update: {
+          active_mission_ids?: string[]
+          created_at?: string
+          dispatcher_id?: string
+          id?: string
+          note?: string | null
+          pending_high_risk_mission_ids?: string[]
+          unresolved_sos_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_handovers_dispatcher_id_fkey"
+            columns: ["dispatcher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -895,9 +1312,35 @@ export type Database = {
           },
         ]
       }
+      mission_latest_location: {
+        Row: {
+          agent_id: string | null
+          lat: number | null
+          lng: number | null
+          mission_id: string | null
+          recorded_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_tracking_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_mission_offer: { Args: { p_offer_id: string }; Returns: undefined }
+      acknowledge_sos: { Args: { p_event_id: string }; Returns: undefined }
       agent_cancel_mission: {
         Args: { p_mission_id: string }
         Returns: undefined
@@ -906,6 +1349,7 @@ export type Database = {
         Args: { p_agent_id: string }
         Returns: boolean
       }
+      cancel_sos: { Args: { p_event_id: string }; Returns: undefined }
       complete_mission: {
         Args: { p_mission_id: string; p_summary?: string }
         Returns: undefined
@@ -932,6 +1376,7 @@ export type Database = {
         Args: { p_mission_id: string }
         Returns: string
       }
+      create_shift_handover: { Args: { p_note?: string }; Returns: string }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -941,6 +1386,8 @@ export type Database = {
         Returns: undefined
       }
       expire_mission_offer: { Args: { p_offer_id: string }; Returns: undefined }
+      expire_stale_mission_offers: { Args: never; Returns: undefined }
+      get_shared_mission_status: { Args: { p_token: string }; Returns: Json }
       is_vehicle_photo_checklist_complete: {
         Args: { p_photos: Json }
         Returns: boolean
@@ -954,6 +1401,27 @@ export type Database = {
           p_entity_id: string
           p_payload?: Json
         }
+        Returns: undefined
+      }
+      notify_event: {
+        Args: {
+          p_event: Database["public"]["Enums"]["notification_event"]
+          p_mission_id?: string
+          p_payload?: Json
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      record_mission_location: {
+        Args: { p_lat: number; p_lng: number; p_mission_id: string }
+        Returns: undefined
+      }
+      request_more_info: {
+        Args: { p_mission_id: string; p_note: string }
+        Returns: undefined
+      }
+      resolve_sos: {
+        Args: { p_event_id: string; p_journal: string }
         Returns: undefined
       }
       review_identity_verification: {
@@ -973,6 +1441,14 @@ export type Database = {
       }
       start_mission_protection: {
         Args: { p_entered_code: string; p_mission_id: string }
+        Returns: undefined
+      }
+      trigger_sos: {
+        Args: { p_lat?: number; p_lng?: number; p_mission_id: string }
+        Returns: string
+      }
+      update_sos_protocol_step: {
+        Args: { p_event_id: string; p_step: string; p_value: boolean }
         Returns: undefined
       }
     }
@@ -1006,12 +1482,26 @@ export type Database = {
         | "cancelled_agent"
         | "cancelled_dispatcher"
         | "no_agent_available"
+      notification_channel: "push" | "sms"
+      notification_event:
+        | "offer_received"
+        | "mission_confirmed"
+        | "agent_arrived"
+        | "mission_completed"
+        | "sos_acknowledged"
       protected_person_relation:
         | "self"
         | "child"
         | "parent"
         | "partner"
         | "other"
+      shield_event_source: "mission" | "shield"
+      shield_event_status:
+        | "open"
+        | "acknowledged"
+        | "resolved"
+        | "cancelled_false_alarm"
+      shield_event_type: "sos" | "wwm_expired" | "circle_share" | "fake_call"
       user_role: "client" | "agent" | "dispatcher" | "admin"
     }
     CompositeTypes: {
@@ -1171,6 +1661,14 @@ export const Constants = {
         "cancelled_dispatcher",
         "no_agent_available",
       ],
+      notification_channel: ["push", "sms"],
+      notification_event: [
+        "offer_received",
+        "mission_confirmed",
+        "agent_arrived",
+        "mission_completed",
+        "sos_acknowledged",
+      ],
       protected_person_relation: [
         "self",
         "child",
@@ -1178,6 +1676,14 @@ export const Constants = {
         "partner",
         "other",
       ],
+      shield_event_source: ["mission", "shield"],
+      shield_event_status: [
+        "open",
+        "acknowledged",
+        "resolved",
+        "cancelled_false_alarm",
+      ],
+      shield_event_type: ["sos", "wwm_expired", "circle_share", "fake_call"],
       user_role: ["client", "agent", "dispatcher", "admin"],
     },
   },

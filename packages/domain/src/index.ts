@@ -32,3 +32,22 @@ export type { AgentEligibilityInput, AgentStatus } from "./agents/status";
 
 export { computeAgentEarnings } from "./earnings/rules";
 export type { EarningsInput } from "./earnings/rules";
+
+export { computeSuggestionScore, rankAgentSuggestions } from "./dispatch/ranking";
+export type { AgentSuggestionInput, RankedAgentSuggestion } from "./dispatch/ranking";
+
+export {
+  isSosProtocolComplete,
+  SOS_HUMAN_FIRST_CONTACT_TARGET_SECONDS,
+  SOS_LATENCY_HARD_CAP_MS,
+  SOS_LATENCY_TARGET_P95_MS,
+  SOS_PROTOCOL_STEPS,
+} from "./sos/protocol";
+export type { SosProtocolStep } from "./sos/protocol";
+
+export {
+  TRACKING_BROADCAST_INTERVAL_SECONDS,
+  TRACKING_PERSIST_INTERVAL_SECONDS,
+  TRACKING_POSITION_LATENCY_TARGET_P95_MS,
+  TRACKING_STATUS_LATENCY_TARGET_P95_MS,
+} from "./tracking/constants";

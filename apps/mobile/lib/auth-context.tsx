@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import type { Session } from "@protego/supabase";
 import { supabase } from "./supabase";
+import { registerForPushNotifications } from "./push";
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,6 +26,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    // Register once per new session — registerForPushNotifications()
+    // itself is best-effort (see that file), so a failure here never
+    // needs surfacing to the user.
+    if (session) {
+      registerForPushNotifications(session.user.id);
+    }
+  }, [session]);
 
   return <AuthContext.Provider value={{ session, loading }}>{children}</AuthContext.Provider>;
 }

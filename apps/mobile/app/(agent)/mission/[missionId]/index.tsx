@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { VEHICLE_CHECKLIST_PHOTO_KEYS, type VehiclePhotoKey } from "@protego/domain";
+import { TRACKING_PERSIST_INTERVAL_SECONDS, VEHICLE_CHECKLIST_PHOTO_KEYS, type VehiclePhotoKey } from "@protego/domain";
 import { supabase } from "../../../../lib/supabase";
 import { useAuth } from "../../../../lib/auth-context";
 import { bookingStyles as s } from "../../../../lib/booking-styles";
@@ -23,6 +23,17 @@ interface Checklist {
   insurance_confirmed: boolean;
   photos: Partial<Record<VehiclePhotoKey, string>>;
 }
+
+interface ChatMessage {
+  id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
+/** Base coordinate for the simulated GPS trail — see the broadcastLocation effect below. */
+const MOCK_BASE_LAT = 47.0465;
+const MOCK_BASE_LNG = 21.9189;
 
 const PHOTO_LABEL_KEY: Record<VehiclePhotoKey, string> = {
   front: "agentApp.photoFront",
@@ -56,6 +67,11 @@ export default function MissionScreen() {
   const [reviewing, setReviewing] = useState(false);
   const [summary, setSummary] = useState("");
   const [incidentCount, setIncidentCount] = useState(0);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messageBody, setMessageBody] = useState("");
+  const [sosEventId, setSosEventId] = useState<string | null>(null);
+  const [sosHoldProgress, setSosHoldProgress] = useState(0);
+  const sosHoldInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     if (!missionId) return;
@@ -96,7 +112,27 @@ export default function MissionScreen() {
       .select("id", { count: "exact", head: true })
       .eq("mission_id", missionId);
     setIncidentCount(count ?? 0);
-  }, [missionId]);
+
+    const { data: chat } = await supabase
+      .from("mission_chat_messages")
+      .select("id, sender_id, body, created_at")
+      .eq("mission_id", missionId)
+      .order("created_at", { ascending: true });
+    setMessages(chat ?? []);
+
+    if (session) {
+      const { data: openSos } = await supabase
+        .from("shield_events")
+        .select("id")
+        .eq("mission_id", missionId)
+        .eq("triggered_by", session.user.id)
+        .in("status", ["open", "acknowledged"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setSosEventId(openSos?.id ?? null);
+    }
+  }, [missionId, session]);
 
   useEffect(() => {
     // Simple fetch-on-mount/dependency-change pattern; no data-fetching
@@ -123,6 +159,50 @@ export default function MissionScreen() {
       return;
     }
     load();
+  }
+
+  // Simulated GPS trail: no expo-location dependency wired this
+  // milestone (disclosed simplification, same treatment as the mock
+  // photo capture above) — a slow random walk around a fixed Oradea
+  // coordinate stands in for real device location, exercising the exact
+  // same record_mission_location() path a real GPS reading would.
+  useEffect(() => {
+    if (!missionId || !brief || !["enroute", "arrived", "active"].includes(brief.mission_status)) return;
+    const interval = setInterval(
+      () => {
+        const jitter = () => (Math.random() - 0.5) * 0.01;
+        supabase.rpc("record_mission_location", {
+          p_mission_id: missionId,
+          p_lat: MOCK_BASE_LAT + jitter(),
+          p_lng: MOCK_BASE_LNG + jitter(),
+        });
+      },
+      TRACKING_PERSIST_INTERVAL_SECONDS * 1000
+    );
+    return () => clearInterval(interval);
+  }, [missionId, brief]);
+
+  async function sendMessage() {
+    if (!missionId || !session || !messageBody.trim()) return;
+    const { error: sendError } = await supabase
+      .from("mission_chat_messages")
+      .insert({ mission_id: missionId, sender_id: session.user.id, body: messageBody });
+    if (!sendError) {
+      setMessageBody("");
+      load();
+    }
+  }
+
+  async function triggerEmergency() {
+    if (!missionId) return;
+    const { data, error: sosError } = await supabase.rpc("trigger_sos", { p_mission_id: missionId });
+    if (!sosError) setSosEventId(data);
+  }
+
+  async function cancelEmergency() {
+    if (!sosEventId) return;
+    await supabase.rpc("cancel_sos", { p_event_id: sosEventId });
+    setSosEventId(null);
   }
 
   async function togglePhoto(key: VehiclePhotoKey) {
@@ -191,6 +271,21 @@ export default function MissionScreen() {
     return (
       <View style={s.container}>
         <ActivityIndicator color="#C9A227" />
+      </View>
+    );
+  }
+
+  if (sosEventId) {
+    return (
+      <View style={s.container}>
+        <ScrollView contentContainerStyle={s.scroll}>
+          <Text style={[s.title, { color: "#E5484D" }]}>{t("sos.activePill")}</Text>
+          <Text style={s.intro}>{t("sos.body")}</Text>
+          <Text style={s.note}>{t("legal.not112")}</Text>
+          <Pressable style={s.button} onPress={cancelEmergency}>
+            <Text style={s.buttonText}>{t("sos.cancelFalse")}</Text>
+          </Pressable>
+        </ScrollView>
       </View>
     );
   }
@@ -342,6 +437,64 @@ export default function MissionScreen() {
         ) : null}
 
         {brief.mission_status === "done" ? <Text style={s.note}>{t("agentApp.doneNote")}</Text> : null}
+
+        {["assigned", "enroute", "arrived", "active"].includes(brief.mission_status) ? (
+          <>
+            <Text style={s.label}>{t("chat.monitored")}</Text>
+            <View style={{ gap: 8 }}>
+              {messages.map((message) => (
+                <View key={message.id} style={[s.card, message.sender_id === session?.user.id ? s.cardSelected : null]}>
+                  <Text style={s.cardDesc}>{message.body}</Text>
+                </View>
+              ))}
+            </View>
+            <TextInput
+              style={s.input}
+              placeholder={t("chat.placeholder")}
+              placeholderTextColor="#6B7178"
+              value={messageBody}
+              onChangeText={setMessageBody}
+            />
+            <Pressable style={s.button} onPress={sendMessage}>
+              <Text style={s.buttonText}>{t("chat.sent")}</Text>
+            </Pressable>
+
+            <Text style={s.note}>{t("legal.not112")}</Text>
+            <Pressable
+              style={{
+                alignSelf: "center",
+                width: 58,
+                height: 58,
+                borderRadius: 29,
+                backgroundColor: "#E5484D",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 16,
+                opacity: 0.5 + sosHoldProgress * 0.5,
+              }}
+              onPressIn={() => {
+                const start = Date.now();
+                sosHoldInterval.current = setInterval(() => {
+                  const elapsed = Date.now() - start;
+                  setSosHoldProgress(Math.min(1, elapsed / 3000));
+                  if (elapsed >= 3000) {
+                    if (sosHoldInterval.current) clearInterval(sosHoldInterval.current);
+                    sosHoldInterval.current = null;
+                    setSosHoldProgress(0);
+                    triggerEmergency();
+                  }
+                }, 100);
+              }}
+              onPressOut={() => {
+                if (sosHoldInterval.current) clearInterval(sosHoldInterval.current);
+                sosHoldInterval.current = null;
+                setSosHoldProgress(0);
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>SOS</Text>
+            </Pressable>
+          </>
+        ) : null}
       </ScrollView>
     </View>
   );
