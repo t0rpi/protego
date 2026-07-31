@@ -1,5 +1,5 @@
-# PROTEGO — MASTER PROMPT v2.2 (documentul final de implementare)
-**Data:** 24 iulie 2026 · **Status:** aprobat pentru implementare · **v2.1** închide deciziile #3–#7 din docs/product/open-decisions.md · **v2.2** închide #1: orașul pilot
+# PROTEGO — MASTER PROMPT v2.3 (documentul final de implementare)
+**Data:** 31 iulie 2026 · **Status:** aprobat pentru implementare · **v2.1** închide #3–#7 · **v2.2** închide #1 (Oradea) · **v2.3** închide prețurile de pilot și cota agentului
 **Rol:** Sursa unică de adevăr. Se încarcă în: Claude Project (knowledge), repo GitHub (rădăcină), Cowork (folderul de lucru), Claude Design (context). Înlocuiește v1.0 și v1.1.
 
 ---
@@ -48,9 +48,22 @@ Nivelul 0 este motorul de creștere (adopție în masă, cost zero pentru utiliz
 14. **KPI pilot (ținte de lucru, ajustabile după primele săptămâni):** prim contact dispecer la SOS sub 60 sec · agent alocat în sub 5 min de la confirmare · rating mediu ≥ 4,7 · zero misiuni de risc ridicat confirmate automat (regulă absolută, nu KPI).
 15. **Orașul pilot: ORADEA** — confirmat de fondator (v2.2). Geofencing, recrutare agenți și marketing local se fac pe Oradea. (#1 închis)
 
-## Rămase deschise (răspuns de la fondator, nu blochează M0–M2)
-- **#2 Categoriile licenței 333/2003 + numărul licenței** — de completat când sunt disponibile; de trimis avocatului lista din docs/legal/questions-for-lawyer.md; blochează finalizarea compliance-checklist și textele legale din M1.
-- **#8 Date operaționale** — nr. agenți + vehicule pentru pilot, buget lunar, status domeniu protego.ro.
+## Decizii închise în v2.3 — prețurile de pilot (confirmate de fondator, 31 iulie 2026)
+Toate valorile rămân CONFIGURABILE din admin; acestea sunt valorile de pornire ale pilotului Oradea, fundamentate pe piața ride-share și pază din august 2026:
+16. **Protect Ride:** tarif bază 30 lei + 5 lei/km, minim 60 lei/cursă.
+17. **Escortă:** 150 lei/oră, minim 1 oră.
+18. **Protecție cu ora:** 130 lei/oră, minim 2 ore; degresivitate −15% peste 8 ore.
+19. **Vehicul PROTEGO:** 50 lei/oră la serviciile orare; inclus în tariful Protect Ride.
+20. **Taxă platformă & asigurare:** 20 lei/misiune (linie separată, transparentă, în ofertă).
+21. **Coeficienți:** noapte (22:00–06:00) ×1,25 · weekend (vineri 20:00 → duminică 24:00) ×1,15 · urgență (sub 30 min) ×1,20 — cumulați multiplicativ, plafonați la ×1,5 total.
+22. **Anulare sub fereastra gratuită (60 min):** 30% din estimare, minim 30 lei.
+23. **Cota agentului: 55% din componenta de manoperă** (nu din total — vehiculul și taxa de platformă revin firmei). La Protect Ride: 55% din (bază + km), cu garanție minim 35 lei/misiune pentru agent. Înlocuiește placeholder-ul 0.70 din seed (pricing_config.agent_share_pct → 0.55).
+
+## Rămase deschise (răspuns de la fondator)
+- **Numărul licenței 333/2003** — decizie fondator: se completează la finalul dezvoltării, înainte de lansarea pilotului (M7), în textele legale ale aplicației și site-ului.
+- **Categoriile licenței** — necesare ÎNAINTE de M7: ce activități acoperă licența (pază bunuri, protecția persoanelor, transport valori, monitorizare) — condiționează validarea juridică a serviciilor Escortă/Protecție cu ora.
+- **#8 Date operaționale pilot** — nr. agenți dedicați (țintă minim 3-4, câți cu permis B, mix gen, proveniență MAI/MApN pentru badge-uri) + vehicule (marcă/model/an/culoare) — necesare la M7.
+- **DNS protegoapp.ro** — domeniu activ la Hostico; de confirmat înregistrările A/CNAME spre Vercel și bifele Valid Configuration.
 
 ---
 
