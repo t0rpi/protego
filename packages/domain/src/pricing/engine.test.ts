@@ -22,6 +22,7 @@ const baseConfig: PricingConfig = {
   vatRate: 0.21,
   freeCancelMinutes: 60,
   minimumTotal: null,
+  defaultDistanceKm: null,
   agentMinimumPerMission: null,
   cancellationFeePct: 0.3,
   cancellationFeeMinimum: 30,
@@ -149,6 +150,32 @@ describe("computeQuote — Protect Ride (flat + per-km, vehicle bundled)", () =>
     // base 30 + distance 10 = 40, below the 60 floor -> +20 adjustment
     expect(quote.lines.find((l) => l.label === "minimum_adjustment")?.amount).toBe(20);
     expect(quote.laborComponent).toBe(60);
+  });
+
+  it("falls back to defaultDistanceKm (flagged as an estimate) when km is left blank", () => {
+    const config = { ...baseConfig, defaultDistanceKm: 8 };
+    const quote = computeQuote(
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, mobility: "protego_vehicle" },
+      config
+    );
+    // base 30; distance 8*5 = 40 (estimated); labor = 70
+    expect(quote.lines).toEqual([
+      { label: "base", amount: 30 },
+      { label: "distance_estimated", amount: 40 },
+      { label: "platform_fee", amount: 20 },
+      { label: "vat", amount: 18.9 },
+    ]);
+    expect(quote.laborComponent).toBe(70);
+  });
+
+  it("charges base-fare-only when km is blank and no defaultDistanceKm is configured", () => {
+    const quote = computeQuote(
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, mobility: "protego_vehicle" },
+      baseConfig
+    );
+    expect(quote.lines.find((l) => l.label === "distance")).toBeUndefined();
+    expect(quote.lines.find((l) => l.label === "distance_estimated")).toBeUndefined();
+    expect(quote.laborComponent).toBe(30);
   });
 });
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(13);
+select plan(15);
 
 -- Protect Ride: flat base + per-km, vehicle bundled in, no agent/vehicle
 -- lines at all (v2.3 §16/§19).
@@ -32,6 +32,27 @@ select is(
   (select (public.compute_quote('protect_ride', 'Oradea', 1, 0, 2, 'protego_vehicle', false, false, false) ->> 'labor_component')::numeric),
   60.00,
   'a short ride (base 30 + 2km*5 = 40) is floored at the 60 lei minimum'
+);
+
+-- M7 QA fix: blank km (client can't know the route distance) falls back
+-- to pricing_config.default_distance_km (seeded 8 for Oradea protect_ride,
+-- 20260731160002) instead of silently charging base-fare-only.
+select is(
+  (select (public.compute_quote('protect_ride', 'Oradea', 1, 0, null, 'protego_vehicle', false, false, false) ->> 'total')::numeric),
+  108.90,
+  'blank km falls back to default_distance_km=8: base 30 + 8km*5=40 labor, +20 platform, +21% VAT = 108.90'
+);
+
+select is(
+  (
+    select line ->> 'label'
+    from jsonb_array_elements(
+      public.compute_quote('protect_ride', 'Oradea', 1, 0, null, 'protego_vehicle', false, false, false) -> 'lines'
+    ) as line
+    where line ->> 'label' in ('distance', 'distance_estimated')
+  ),
+  'distance_estimated',
+  'the fallback distance line is flagged "distance_estimated", never presented as a measured "distance"'
 );
 
 -- Escort/Hourly: hourly agent rate + separate vehicle line

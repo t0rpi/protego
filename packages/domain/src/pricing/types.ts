@@ -23,6 +23,8 @@ export interface PricingConfig {
   freeCancelMinutes: number;
   /** v2.3 §16 — floor on the labor/ride component (before platform fee + VAT). Confirmed for Protect Ride (60 lei) only; null elsewhere. */
   minimumTotal: number | null;
+  /** M7 QA stopgap — disclosed placeholder distance used when the client leaves km blank (real geocoding not built yet). Protect Ride only; null elsewhere. */
+  defaultDistanceKm: number | null;
   /** v2.3 §23 — floor on the agent's computed earnings. Confirmed for Protect Ride (35 lei) only; null elsewhere — not invented for Escort/Hourly. */
   agentMinimumPerMission: number | null;
   /** v2.3 §22 */
@@ -50,6 +52,7 @@ export interface QuoteLine {
   label:
     | "base"
     | "distance"
+    | "distance_estimated"
     | "minimum_adjustment"
     | "agent"
     | "vehicle"

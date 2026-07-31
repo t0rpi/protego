@@ -65,6 +65,12 @@ export function computeQuote(input: QuoteInput, config: PricingConfig): Quote {
     if (input.km) {
       distanceCost = round2(input.km * config.perKm * coef);
       lines.push({ label: "distance", amount: distanceCost });
+    } else if (config.defaultDistanceKm !== null) {
+      // Client left km blank — fall back to the disclosed placeholder
+      // estimate (see PricingConfig.defaultDistanceKm) rather than
+      // charging base-fare-only.
+      distanceCost = round2(config.defaultDistanceKm * config.perKm * coef);
+      lines.push({ label: "distance_estimated", amount: distanceCost });
     }
 
     laborComponent = baseCost + distanceCost;
