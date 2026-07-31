@@ -145,14 +145,20 @@ update public.mission_vehicle_checklists
 set consent_signed_at = now(), insurance_confirmed = true, client_signature_at = now()
 where mission_id = :'vehicle_mission_id'::uuid;
 
+-- M3 gives `authenticated` a broad column grant on `photos` (needed for
+-- the agent's own use) and a client passes their own row policy on this
+-- table, so this is no longer a bare grant-level 42501 — it is now
+-- explicitly rejected by enforce_vehicle_checklist_column_ownership()
+-- (20260731110005), a real exception raised after RLS already let the
+-- row through.
 select throws_ok(
   format(
     'update public.mission_vehicle_checklists set photos = %L where mission_id = %L',
     '{"front":"x"}', :'vehicle_mission_id'::text
   ),
-  '42501',
+  'P0001',
   null,
-  'client has no update grant on the photos column — that is agent-side, M3'
+  'a client cannot update the photos column — that is agent-side, explicitly rejected (M3)'
 );
 
 select lives_ok(

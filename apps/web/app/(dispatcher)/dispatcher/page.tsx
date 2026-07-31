@@ -28,10 +28,13 @@ export default async function DispatcherHomePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
       <p className="text-sm text-[var(--text-secondary)]">
         PROTEGO — dispecerat (M1: autentificat ca {profile.role})
       </p>
+      <a href="/dispatcher/queue" className="text-sm font-semibold text-[var(--gold)] underline">
+        Coada de asignare (M3)
+      </a>
     </main>
   );
 }

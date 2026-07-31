@@ -13,7 +13,8 @@ type AgentPreference = Database["public"]["Enums"]["mission_agent_preference"];
 type DressCode = Database["public"]["Enums"]["mission_dress_code"];
 type ContextKind = Database["public"]["Enums"]["mission_context_kind"];
 
-type Step = "where" | "who" | "team" | "mobility" | "context" | "quote" | "payment" | "result";
+type Step = "where" | "when" | "who" | "team" | "mobility" | "context" | "quote" | "payment" | "result";
+type WhenChoice = "now" | "in30" | "schedule";
 
 interface QuoteLine {
   label: string;
@@ -54,6 +55,16 @@ export default function BookingWizardScreen() {
   const [destinationAddress, setDestinationAddress] = useState("");
   const [durationHours, setDurationHours] = useState(MIN_DURATION[serviceKey]);
   const [distanceKm, setDistanceKm] = useState("");
+
+  // step: when — scheduled_at exists on missions since M2, but the
+  // wizard never collected it (booking always defaulted to "now"); M3
+  // adds this step. Deliberately a plain "YYYY-MM-DD HH:MM" text input
+  // rather than a native date/time picker component — no date-picker
+  // dependency exists in this Expo project yet, and adding one is a
+  // bigger-than-necessary change for this milestone. Low-risk, disclosed
+  // simplification; a native picker is a natural follow-up, not a fix.
+  const [whenChoice, setWhenChoice] = useState<WhenChoice>("now");
+  const [scheduleInput, setScheduleInput] = useState("");
 
   // step: who
   const [protectedPersons, setProtectedPersons] = useState<{ id: string; full_name: string }[]>([]);
@@ -121,8 +132,30 @@ export default function BookingWizardScreen() {
 
   const isRide = serviceKey === "protect_ride";
 
+  /** null = "acum" (missions.scheduled_at's own convention — see that column's comment). */
+  function resolveScheduledAt(): { value: string | null; error: string | null } {
+    if (whenChoice === "now") return { value: null, error: null };
+    if (whenChoice === "in30") return { value: new Date(Date.now() + 30 * 60 * 1000).toISOString(), error: null };
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/.exec(scheduleInput.trim());
+    if (!match) return { value: null, error: t("booking.scheduleInvalid") };
+    const [, year, month, day, hour, minute] = match;
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+      return { value: null, error: t("booking.scheduleInvalid") };
+    }
+    return { value: parsed.toISOString(), error: null };
+  }
+
   async function goToQuote() {
     if (!missionId) return;
+
+    const { value: scheduledAt, error: scheduleError } = resolveScheduledAt();
+    if (scheduleError) {
+      setError(scheduleError);
+      return;
+    }
+
     setBusy(true);
     setError(null);
 
@@ -131,6 +164,7 @@ export default function BookingWizardScreen() {
       .update({
         pickup_address: pickupAddress || null,
         destination_address: isRide ? destinationAddress || null : null,
+        scheduled_at: scheduledAt,
         duration_hours: isRide ? null : durationHours,
         distance_km: isRide ? Number(distanceKm) || null : null,
         protected_person_id: selectedPersonId,
@@ -325,7 +359,62 @@ export default function BookingWizardScreen() {
               </View>
             )}
             <Text style={s.note}>{t("booking.zoneNote")}</Text>
-            <Pressable style={s.button} onPress={() => setStep("who")}>
+            <Pressable style={s.button} onPress={() => setStep("when")}>
+              <Text style={s.buttonText}>{t("common.continue")}</Text>
+            </Pressable>
+          </>
+        )}
+
+        {step === "when" && (
+          <>
+            <Text style={s.title}>{t("booking.whenTitle")}</Text>
+            <View style={s.row}>
+              <Pressable
+                style={[s.chip, whenChoice === "now" && s.chipSelected]}
+                onPress={() => setWhenChoice("now")}
+              >
+                <Text style={s.chipText}>{t("booking.now")}</Text>
+              </Pressable>
+              <Pressable
+                style={[s.chip, whenChoice === "in30" && s.chipSelected]}
+                onPress={() => setWhenChoice("in30")}
+              >
+                <Text style={s.chipText}>{t("booking.in30")}</Text>
+              </Pressable>
+              <Pressable
+                style={[s.chip, whenChoice === "schedule" && s.chipSelected]}
+                onPress={() => setWhenChoice("schedule")}
+              >
+                <Text style={s.chipText}>{t("booking.schedule")}</Text>
+              </Pressable>
+            </View>
+            {whenChoice === "schedule" ? (
+              <View>
+                <Text style={s.label}>{t("booking.schedulePh")}</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="2026-08-15 18:30"
+                  placeholderTextColor="#6B7178"
+                  value={scheduleInput}
+                  onChangeText={setScheduleInput}
+                />
+              </View>
+            ) : null}
+
+            {error ? <Text style={s.error}>{error}</Text> : null}
+
+            <Pressable
+              style={s.button}
+              onPress={() => {
+                const { error: scheduleError } = resolveScheduledAt();
+                if (scheduleError) {
+                  setError(scheduleError);
+                  return;
+                }
+                setError(null);
+                setStep("who");
+              }}
+            >
               <Text style={s.buttonText}>{t("common.continue")}</Text>
             </Pressable>
           </>

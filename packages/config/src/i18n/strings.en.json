@@ -144,6 +144,8 @@
     "now": "Now",
     "in30": "In 30 min",
     "schedule": "Schedule",
+    "schedulePh": "Date and time (year-month-day hour:minute)",
+    "scheduleInvalid": "Enter a future date and time, in YYYY-MM-DD HH:MM format.",
     "durationRide": "Estimated duration",
     "durationEscort": "Duration (1–2 hours, 1h minimum billing)",
     "durationHourly": "Duration (2 hours minimum)",

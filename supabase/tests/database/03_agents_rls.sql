@@ -38,11 +38,15 @@ select is(
   'agent can read their own documents'
 );
 
--- No UPDATE policy grants this to role 'agent', so RLS silently filters
--- the row out (0 rows affected) rather than raising an error.
-select lives_ok(
+-- M3 gives agents their own UPDATE policy on this table (self-service
+-- is_available), so a status change no longer fails as a silent RLS
+-- mismatch — it now reaches the row and is explicitly rejected by
+-- enforce_agent_column_ownership() (20260731110001), a real exception.
+select throws_ok(
   format('update public.agents set status = %L where id = %L', 'active', :'aaron_id'::text),
-  'agent''s self-approval attempt executes without error (RLS filters it silently)'
+  'P0001',
+  null,
+  'agent''s self-approval attempt is explicitly rejected by the column-ownership trigger (M3)'
 );
 
 select is(

@@ -144,6 +144,8 @@
     "now": "Acum",
     "in30": "În 30 min",
     "schedule": "Programează",
+    "schedulePh": "Data și ora (an-lună-zi oră:minut)",
+    "scheduleInvalid": "Introdu o dată și oră viitoare, în formatul AAAA-LL-ZZ OO:MM.",
     "durationRide": "Durată estimată",
     "durationEscort": "Durată (1–2 ore, minim facturat 1h)",
     "durationHourly": "Durată (minim 2 ore)",

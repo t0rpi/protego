@@ -55,11 +55,54 @@ export type Database = {
           },
         ]
       }
+      agent_earnings: {
+        Row: {
+          agent_id: string
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          mission_id: string
+        }
+        Insert: {
+          agent_id: string
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          mission_id: string
+        }
+        Update: {
+          agent_id?: string
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          mission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_earnings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_earnings_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: true
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           badges: Json
           created_at: string
           id: string
+          is_available: boolean
           rating: number | null
           source: Database["public"]["Enums"]["agent_source"]
           status: Database["public"]["Enums"]["agent_status"]
@@ -69,6 +112,7 @@ export type Database = {
           badges?: Json
           created_at?: string
           id: string
+          is_available?: boolean
           rating?: number | null
           source?: Database["public"]["Enums"]["agent_source"]
           status?: Database["public"]["Enums"]["agent_status"]
@@ -78,6 +122,7 @@ export type Database = {
           badges?: Json
           created_at?: string
           id?: string
+          is_available?: boolean
           rating?: number | null
           source?: Database["public"]["Enums"]["agent_source"]
           status?: Database["public"]["Enums"]["agent_status"]
@@ -216,6 +261,141 @@ export type Database = {
           },
         ]
       }
+      incident_reports: {
+        Row: {
+          agent_id: string
+          created_at: string
+          description: string
+          evidence: Json
+          id: string
+          incident_type: string
+          mission_id: string
+          severity: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          description: string
+          evidence?: Json
+          id?: string
+          incident_type: string
+          mission_id: string
+          severity: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          description?: string
+          evidence?: Json
+          id?: string
+          incident_type?: string
+          mission_id?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_reports_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_offers: {
+        Row: {
+          agent_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          mission_id: string
+          offered_at: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["mission_offer_status"]
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mission_id: string
+          offered_at?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["mission_offer_status"]
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mission_id?: string
+          offered_at?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["mission_offer_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_offers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_offers_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_reports: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          mission_id: string
+          summary: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          mission_id: string
+          summary?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          mission_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_reports_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_reports_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: true
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_vehicle_checklists: {
         Row: {
           client_signature_at: string | null
@@ -268,6 +448,7 @@ export type Database = {
           distance_km: number | null
           dress_code: Database["public"]["Enums"]["mission_dress_code"]
           duration_hours: number | null
+          elevated_priority: boolean
           id: string
           mobility: Database["public"]["Enums"]["mission_mobility"]
           payment_stub_confirmed: boolean
@@ -293,6 +474,7 @@ export type Database = {
           distance_km?: number | null
           dress_code?: Database["public"]["Enums"]["mission_dress_code"]
           duration_hours?: number | null
+          elevated_priority?: boolean
           id?: string
           mobility?: Database["public"]["Enums"]["mission_mobility"]
           payment_stub_confirmed?: boolean
@@ -318,6 +500,7 @@ export type Database = {
           distance_km?: number | null
           dress_code?: Database["public"]["Enums"]["mission_dress_code"]
           duration_hours?: number | null
+          elevated_priority?: boolean
           id?: string
           mobility?: Database["public"]["Enums"]["mission_mobility"]
           payment_stub_confirmed?: boolean
@@ -383,6 +566,7 @@ export type Database = {
       }
       pricing_config: {
         Row: {
+          agent_share_pct: number
           base: number
           city: string
           coef_night: number
@@ -403,6 +587,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          agent_share_pct?: number
           base?: number
           city: string
           coef_night?: number
@@ -423,6 +608,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          agent_share_pct?: number
           base?: number
           city?: string
           coef_night?: number
@@ -645,9 +831,85 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      agent_mission_briefs: {
+        Row: {
+          agent_count: number | null
+          agent_id: string | null
+          city: string | null
+          client_full_name: string | null
+          context_details: string | null
+          context_kind:
+            | Database["public"]["Enums"]["mission_context_kind"]
+            | null
+          destination_address: string | null
+          distance_km: number | null
+          dress_code: Database["public"]["Enums"]["mission_dress_code"] | null
+          duration_hours: number | null
+          mission_id: string | null
+          mission_status: Database["public"]["Enums"]["mission_status"] | null
+          mobility: Database["public"]["Enums"]["mission_mobility"] | null
+          offer_expires_at: string | null
+          offer_id: string | null
+          offer_status:
+            | Database["public"]["Enums"]["mission_offer_status"]
+            | null
+          offered_at: string | null
+          pickup_address: string | null
+          responded_at: string | null
+          scheduled_at: string | null
+          service_key: string | null
+          verification_code: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_offers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_offers_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_weekly_earnings: {
+        Row: {
+          agent_id: string | null
+          currency: string | null
+          missions_completed: number | null
+          total_amount: number | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_earnings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      accept_mission_offer: { Args: { p_offer_id: string }; Returns: undefined }
+      agent_cancel_mission: {
+        Args: { p_mission_id: string }
+        Returns: undefined
+      }
+      agent_has_no_expired_documents: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
+      complete_mission: {
+        Args: { p_mission_id: string; p_summary?: string }
+        Returns: undefined
+      }
       compute_quote: {
         Args: {
           p_agent_count: number
@@ -662,6 +924,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_mission_offer: {
+        Args: { p_agent_id: string; p_mission_id: string }
+        Returns: string
+      }
       create_quote_for_mission: {
         Args: { p_mission_id: string }
         Returns: string
@@ -669,6 +935,15 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      decline_mission_offer: {
+        Args: { p_offer_id: string }
+        Returns: undefined
+      }
+      expire_mission_offer: { Args: { p_offer_id: string }; Returns: undefined }
+      is_vehicle_photo_checklist_complete: {
+        Args: { p_photos: Json }
+        Returns: boolean
       }
       log_audit_event: {
         Args: {
@@ -696,6 +971,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_mission_protection: {
+        Args: { p_entered_code: string; p_mission_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       agent_document_status: "valid" | "expiring" | "expired"
@@ -712,6 +991,7 @@ export type Database = {
       mission_context_kind: "usual" | "stranger" | "atm" | "club"
       mission_dress_code: "formal" | "casual" | "discreet"
       mission_mobility: "protego_vehicle" | "client_vehicle" | "on_foot"
+      mission_offer_status: "pending" | "accepted" | "declined" | "expired"
       mission_status:
         | "draft"
         | "quoted"
@@ -875,6 +1155,7 @@ export const Constants = {
       mission_context_kind: ["usual", "stranger", "atm", "club"],
       mission_dress_code: ["formal", "casual", "discreet"],
       mission_mobility: ["protego_vehicle", "client_vehicle", "on_foot"],
+      mission_offer_status: ["pending", "accepted", "declined", "expired"],
       mission_status: [
         "draft",
         "quoted",
