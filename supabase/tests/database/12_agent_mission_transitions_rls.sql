@@ -20,11 +20,20 @@ insert into public.agents (id, status, is_available) values
 select tests.authenticate_as(:'alice_id'::uuid);
 
 -- Mission A: the full happy path (assigned -> enroute -> arrived -> active -> done)
-insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
-select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
+-- explicit weekday/daytime scheduled_at so the initial quote's
+-- coefficients (and this test's expected earnings) are deterministic
+-- regardless of the real clock when the suite runs (v2.3's coefficients
+-- are no longer 1.0 no-ops).
+insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, scheduled_at)
+select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, '2026-08-04T14:00:00Z' from public.services where key = 'hourly'
 returning id as mission_a \gset
 update public.missions set status = 'quoted' where id = :'mission_a'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_a'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_a'::uuid, 'auth', 'pi_fixture_a', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_a'::uuid;
 select public.create_quote_for_mission(:'mission_a'::uuid);
 
 -- Mission B: for the raw-bypass negative tests
@@ -32,42 +41,72 @@ insert into public.missions (client_id, service_id, city, mobility, agent_count,
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_b \gset
 update public.missions set status = 'quoted' where id = :'mission_b'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_b'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_b'::uuid, 'auth', 'pi_fixture_b', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_b'::uuid;
 
 -- Mission C: for the column-ownership test
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, pickup_address)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, 'original address' from public.services where key = 'hourly'
 returning id as mission_c \gset
 update public.missions set status = 'quoted' where id = :'mission_c'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_c'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_c'::uuid, 'auth', 'pi_fixture_c', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_c'::uuid;
 
 -- Mission D: isolation (carol must not touch bob's assignment)
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_d \gset
 update public.missions set status = 'quoted' where id = :'mission_d'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_d'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_d'::uuid, 'auth', 'pi_fixture_d', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_d'::uuid;
 
 -- Mission E: agent_cancel_mission happy path + reassignment
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_e \gset
 update public.missions set status = 'quoted' where id = :'mission_e'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_e'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_e'::uuid, 'auth', 'pi_fixture_e', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_e'::uuid;
 
 -- Mission F: agent_cancel_mission wrong-caller
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_f \gset
 update public.missions set status = 'quoted' where id = :'mission_f'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_f'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_f'::uuid, 'auth', 'pi_fixture_f', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_f'::uuid;
 
 -- Mission G: agent_cancel_mission wrong-status (already active)
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_g \gset
 update public.missions set status = 'quoted' where id = :'mission_g'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_g'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_g'::uuid, 'auth', 'pi_fixture_g', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_g'::uuid;
 
 select tests.authenticate_as(:'dana_id'::uuid);
 
@@ -154,10 +193,14 @@ select is(
   'completing the mission wrote exactly one guided report'
 );
 
+-- v2.3 (M5): complete_mission() recomputes the final labor component
+-- from REAL duration with no coefficients (min-billing floor still
+-- applies: 130*2h=260), then applies agent_share_pct=0.55 to that —
+-- not to the (possibly coefficient-inflated) initial quote total.
 select is(
   (select amount from public.agent_earnings where mission_id = :'mission_a'::uuid),
-  321.86,
-  'agent earnings = quote total (459.80) x agent_share_pct (0.70) = 321.86'
+  143.00,
+  'agent earnings = final recomputed labor (130*2=260, no coefficients at completion) x agent_share_pct (0.55) = 143.00'
 );
 
 -- 10: isolation on mission D. Carol has no accepted offer here, so she

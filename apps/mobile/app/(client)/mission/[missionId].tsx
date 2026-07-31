@@ -3,8 +3,10 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { tokens } from "@protego/ui";
+import { useStripe } from "@stripe/stripe-react-native";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
+import { cancelMissionPayment, createOveragePayment } from "../../../lib/payments";
 import { bookingStyles as s } from "../../../lib/booking-styles";
 
 interface MissionInfo {
@@ -13,6 +15,11 @@ interface MissionInfo {
   destination_address: string | null;
   verification_code: string | null;
   mobility: string;
+}
+
+interface ReceiptLine {
+  label: string;
+  amount: number;
 }
 
 interface ChatMessage {
@@ -37,8 +44,12 @@ export default function ClientMissionScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [mission, setMission] = useState<MissionInfo | null>(null);
+  const [receipt, setReceipt] = useState<{ lines: ReceiptLine[]; total: number } | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [overageBusy, setOverageBusy] = useState(false);
   const [position, setPosition] = useState<{ lat: number; lng: number; recorded_at: string } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageBody, setMessageBody] = useState("");
@@ -91,6 +102,23 @@ export default function ClientMissionScreen() {
       .limit(1)
       .maybeSingle();
     setSosEventId(openSos?.id ?? null);
+
+    if (m?.status === "done") {
+      const { data: finalQuote } = await supabase
+        .from("quotes")
+        .select("breakdown, total_estimate")
+        .eq("mission_id", missionId)
+        .eq("kind", "final")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (finalQuote) {
+        setReceipt({
+          lines: (finalQuote.breakdown as unknown as ReceiptLine[]) ?? [],
+          total: finalQuote.total_estimate,
+        });
+      }
+    }
   }, [missionId, session]);
 
   useEffect(() => {
@@ -177,6 +205,53 @@ export default function ClientMissionScreen() {
     if (!sosEventId) return;
     await supabase.rpc("cancel_sos", { p_event_id: sosEventId });
     setSosEventId(null);
+  }
+
+  /** business-rules.md §3 / v2.3 §22 — the fee (if any) is computed
+   * server-side by cancel_mission_by_client(); this only reports it. */
+  async function cancelMission() {
+    if (!missionId) return;
+    setCancelBusy(true);
+    setError(null);
+    try {
+      const result = await cancelMissionPayment(missionId);
+      setError(
+        result.fee > 0
+          ? t("quote.cancelFeeCharged", { amount: result.fee })
+          : t("quote.cancelReleased")
+      );
+      await load();
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : "eroare la anulare");
+    }
+    setCancelBusy(false);
+  }
+
+  /** audit §4.4 — a new PaymentIntent, confirmed the same way as the
+   * original booking payment; never applied without this explicit step. */
+  async function requestOverage(hours: number) {
+    if (!missionId) return;
+    setOverageBusy(true);
+    setError(null);
+    try {
+      const { client_secret } = await createOveragePayment(missionId, hours);
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "PROTEGO",
+        paymentIntentClientSecret: client_secret,
+      });
+      if (initError) {
+        setError(initError.message);
+        setOverageBusy(false);
+        return;
+      }
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        setError(presentError.message);
+      }
+    } catch (overageError) {
+      setError(overageError instanceof Error ? overageError.message : "eroare la prelungire");
+    }
+    setOverageBusy(false);
   }
 
   if (!mission) {
@@ -296,13 +371,47 @@ export default function ClientMissionScreen() {
             >
               <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20 }}>SOS</Text>
             </Pressable>
+
+            <Pressable
+              style={[s.ghostButton, overageBusy && s.buttonDisabled]}
+              onPress={() => requestOverage(1)}
+              disabled={overageBusy}
+            >
+              <Text style={s.ghostButtonText}>+1h ({t("quote.extendPolicy")})</Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {["draft", "quoted", "review", "confirmed"].includes(mission.status) ? (
+          <>
+            <Text style={s.note}>{t("quote.cancelPolicy", { min: 60 })}</Text>
+            <Pressable
+              style={[s.ghostButton, cancelBusy && s.buttonDisabled]}
+              onPress={cancelMission}
+              disabled={cancelBusy}
+            >
+              <Text style={s.ghostButtonText}>{t("common.cancel")}</Text>
+            </Pressable>
           </>
         ) : null}
 
         {mission.status === "done" ? (
-          <Pressable style={s.button} onPress={() => router.replace("/")}>
-            <Text style={s.buttonText}>{t("tracking.finish")}</Text>
-          </Pressable>
+          <>
+            <Text style={s.title}>{t("summary.headline")}</Text>
+            {receipt
+              ? receipt.lines.map((line, index) => (
+                  <View style={s.quoteLine} key={`${line.label}-${index}`}>
+                    <Text style={s.quoteLineLabel}>{line.label}</Text>
+                    <Text style={s.quoteLineAmount}>{line.amount} lei</Text>
+                  </View>
+                ))
+              : null}
+            {receipt ? <Text style={s.quoteTotal}>{receipt.total} lei</Text> : null}
+            <Text style={s.note}>{t("summary.note")}</Text>
+            <Pressable style={s.button} onPress={() => router.replace("/")}>
+              <Text style={s.buttonText}>{t("tracking.finish")}</Text>
+            </Pressable>
+          </>
         ) : null}
       </ScrollView>
     </View>

@@ -19,6 +19,7 @@
     "@protego/supabase": "workspace:*",
     "@protego/ui": "workspace:*",
     "@protego/validation": "workspace:*",
+    "@stripe/stripe-react-native": "0.64.0",
     "expo": "~57.0.8",
     "expo-constants": "~57.0.7",
     "expo-image-picker": "~57.0.6",

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -101,6 +101,7 @@ export type Database = {
         Row: {
           badges: Json
           created_at: string
+          iban: string | null
           id: string
           is_available: boolean
           rating: number | null
@@ -111,6 +112,7 @@ export type Database = {
         Insert: {
           badges?: Json
           created_at?: string
+          iban?: string | null
           id: string
           is_available?: boolean
           rating?: number | null
@@ -121,6 +123,7 @@ export type Database = {
         Update: {
           badges?: Json
           created_at?: string
+          iban?: string | null
           id?: string
           is_available?: boolean
           rating?: number | null
@@ -622,6 +625,7 @@ export type Database = {
           agent_preference: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
           client_id: string
+          completed_at: string | null
           context_details: string | null
           context_kind: Database["public"]["Enums"]["mission_context_kind"]
           context_threat_known: boolean
@@ -633,12 +637,12 @@ export type Database = {
           elevated_priority: boolean
           id: string
           mobility: Database["public"]["Enums"]["mission_mobility"]
-          payment_stub_confirmed: boolean
           pickup_address: string | null
           protected_person_id: string | null
           risk_level: string
           scheduled_at: string | null
           service_id: string
+          started_at: string | null
           status: Database["public"]["Enums"]["mission_status"]
           updated_at: string
           verification_code: string | null
@@ -648,6 +652,7 @@ export type Database = {
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
           client_id: string
+          completed_at?: string | null
           context_details?: string | null
           context_kind?: Database["public"]["Enums"]["mission_context_kind"]
           context_threat_known?: boolean
@@ -659,12 +664,12 @@ export type Database = {
           elevated_priority?: boolean
           id?: string
           mobility?: Database["public"]["Enums"]["mission_mobility"]
-          payment_stub_confirmed?: boolean
           pickup_address?: string | null
           protected_person_id?: string | null
           risk_level?: string
           scheduled_at?: string | null
           service_id: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["mission_status"]
           updated_at?: string
           verification_code?: string | null
@@ -674,6 +679,7 @@ export type Database = {
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city?: string
           client_id?: string
+          completed_at?: string | null
           context_details?: string | null
           context_kind?: Database["public"]["Enums"]["mission_context_kind"]
           context_threat_known?: boolean
@@ -685,12 +691,12 @@ export type Database = {
           elevated_priority?: boolean
           id?: string
           mobility?: Database["public"]["Enums"]["mission_mobility"]
-          payment_stub_confirmed?: boolean
           pickup_address?: string | null
           protected_person_id?: string | null
           risk_level?: string
           scheduled_at?: string | null
           service_id?: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["mission_status"]
           updated_at?: string
           verification_code?: string | null
@@ -823,6 +829,130 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          group_id: string | null
+          id: string
+          mission_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id: string
+          type: Database["public"]["Enums"]["payment_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          group_id?: string | null
+          id?: string
+          mission_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id: string
+          type: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          group_id?: string | null
+          id?: string
+          mission_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id?: string
+          type?: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batch_items: {
+        Row: {
+          agent_id: string
+          amount: number
+          batch_id: string
+          created_at: string
+          id: string
+          missions_count: number
+        }
+        Insert: {
+          agent_id: string
+          amount: number
+          batch_id: string
+          created_at?: string
+          id?: string
+          missions_count: number
+        }
+        Update: {
+          agent_id?: string
+          amount?: number
+          batch_id?: string
+          created_at?: string
+          id?: string
+          missions_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batch_items_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["payout_batch_status"]
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["payout_batch_status"]
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["payout_batch_status"]
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_settings: {
         Row: {
           key: string
@@ -843,9 +973,13 @@ export type Database = {
       }
       pricing_config: {
         Row: {
+          agent_minimum_per_mission: number | null
           agent_share_pct: number
           base: number
+          cancellation_fee_minimum: number
+          cancellation_fee_pct: number
           city: string
+          coef_cap: number
           coef_night: number
           coef_urgent: number
           coef_weekend: number
@@ -855,6 +989,7 @@ export type Database = {
           free_cancel_minutes: number
           id: string
           min_billing_hours: number
+          minimum_total: number | null
           per_hour_agent: number
           per_hour_vehicle: number
           per_km: number
@@ -864,9 +999,13 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
+          cancellation_fee_minimum?: number
+          cancellation_fee_pct?: number
           city: string
+          coef_cap?: number
           coef_night?: number
           coef_urgent?: number
           coef_weekend?: number
@@ -876,6 +1015,7 @@ export type Database = {
           free_cancel_minutes?: number
           id?: string
           min_billing_hours?: number
+          minimum_total?: number | null
           per_hour_agent?: number
           per_hour_vehicle?: number
           per_km?: number
@@ -885,9 +1025,13 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
+          cancellation_fee_minimum?: number
+          cancellation_fee_pct?: number
           city?: string
+          coef_cap?: number
           coef_night?: number
           coef_urgent?: number
           coef_weekend?: number
@@ -897,6 +1041,7 @@ export type Database = {
           free_cancel_minutes?: number
           id?: string
           min_billing_hours?: number
+          minimum_total?: number | null
           per_hour_agent?: number
           per_hour_vehicle?: number
           per_km?: number
@@ -921,6 +1066,7 @@ export type Database = {
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id: string | null
           updated_at: string
           verification_level: number
         }
@@ -929,6 +1075,7 @@ export type Database = {
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id?: string | null
           updated_at?: string
           verification_level?: number
         }
@@ -937,6 +1084,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id?: string | null
           updated_at?: string
           verification_level?: number
         }
@@ -1012,6 +1160,8 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          kind: string
+          labor_component: number
           mission_id: string
           total_estimate: number
         }
@@ -1020,6 +1170,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
+          labor_component?: number
           mission_id: string
           total_estimate: number
         }
@@ -1028,6 +1180,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          kind?: string
+          labor_component?: number
           mission_id?: string
           total_estimate?: number
         }
@@ -1211,6 +1365,24 @@ export type Database = {
           },
         ]
       }
+      stripe_webhook_events: {
+        Row: {
+          event_type: string
+          id: string
+          received_at: string
+        }
+        Insert: {
+          event_type: string
+          id: string
+          received_at?: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -1245,6 +1417,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vehicles: {
+        Row: {
+          active: boolean
+          color: string | null
+          created_at: string
+          id: string
+          make: string
+          model: string
+          plate: string
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          active?: boolean
+          color?: string | null
+          created_at?: string
+          id?: string
+          make: string
+          model: string
+          plate: string
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          active?: boolean
+          color?: string | null
+          created_at?: string
+          id?: string
+          make?: string
+          model?: string
+          plate?: string
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -1349,10 +1557,26 @@ export type Database = {
         Args: { p_agent_id: string }
         Returns: boolean
       }
+      cancel_mission_by_client: {
+        Args: { p_mission_id: string }
+        Returns: number
+      }
       cancel_sos: { Args: { p_event_id: string }; Returns: undefined }
       complete_mission: {
         Args: { p_mission_id: string; p_summary?: string }
-        Returns: undefined
+        Returns: Json
+      }
+      compute_overage_quote: {
+        Args: {
+          p_additional_hours: number
+          p_agent_count: number
+          p_city: string
+          p_night?: boolean
+          p_service_key: string
+          p_urgent?: boolean
+          p_weekend?: boolean
+        }
+        Returns: Json
       }
       compute_quote: {
         Args: {
@@ -1368,10 +1592,15 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_mission_after_payment: {
+        Args: { p_mission_id: string }
+        Returns: undefined
+      }
       create_mission_offer: {
         Args: { p_agent_id: string; p_mission_id: string }
         Returns: string
       }
+      create_payout_batch: { Args: { p_week_start: string }; Returns: string }
       create_quote_for_mission: {
         Args: { p_mission_id: string }
         Returns: string
@@ -1403,6 +1632,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_payout_batch_paid: {
+        Args: { p_batch_id: string }
+        Returns: undefined
+      }
       notify_event: {
         Args: {
           p_event: Database["public"]["Enums"]["notification_event"]
@@ -1415,6 +1648,24 @@ export type Database = {
       record_mission_location: {
         Args: { p_lat: number; p_lng: number; p_mission_id: string }
         Returns: undefined
+      }
+      record_payment_event: {
+        Args: {
+          p_amount: number
+          p_mission_id: string
+          p_status: Database["public"]["Enums"]["payment_status"]
+          p_stripe_payment_intent_id: string
+          p_type: Database["public"]["Enums"]["payment_type"]
+        }
+        Returns: string
+      }
+      record_webhook_event: {
+        Args: { p_event_id: string; p_event_type: string }
+        Returns: boolean
+      }
+      request_mission_overage: {
+        Args: { p_additional_hours: number; p_mission_id: string }
+        Returns: Json
       }
       request_more_info: {
         Args: { p_mission_id: string; p_note: string }
@@ -1489,6 +1740,14 @@ export type Database = {
         | "agent_arrived"
         | "mission_completed"
         | "sos_acknowledged"
+      payment_status:
+        | "requires_capture"
+        | "succeeded"
+        | "canceled"
+        | "failed"
+        | "processing"
+      payment_type: "auth" | "capture" | "refund" | "overage_auth"
+      payout_batch_status: "draft" | "paid"
       protected_person_relation:
         | "self"
         | "child"
@@ -1669,6 +1928,15 @@ export const Constants = {
         "mission_completed",
         "sos_acknowledged",
       ],
+      payment_status: [
+        "requires_capture",
+        "succeeded",
+        "canceled",
+        "failed",
+        "processing",
+      ],
+      payment_type: ["auth", "capture", "refund", "overage_auth"],
+      payout_batch_status: ["draft", "paid"],
       protected_person_relation: [
         "self",
         "child",

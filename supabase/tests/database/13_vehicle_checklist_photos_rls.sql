@@ -23,7 +23,12 @@ update public.missions set status = 'quoted' where id = :'mission_id'::uuid;
 insert into public.mission_vehicle_checklists (mission_id, consent_signed_at, insurance_confirmed, client_signature_at)
 values (:'mission_id'::uuid, now(), true, now());
 
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_id'::uuid, 'auth', 'pi_fixture_photos', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_id'::uuid;
 
 select tests.authenticate_as(:'dana_id'::uuid);
 select public.create_mission_offer(:'mission_id'::uuid, :'bob_id'::uuid) as offer_id \gset

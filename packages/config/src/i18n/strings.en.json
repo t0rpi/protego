@@ -203,6 +203,8 @@
     "linePlatform": "Platform & insurance fee",
     "total": "Estimated total",
     "cancelPolicy": "Free cancellation up to {min} min before the mission.",
+    "cancelFeeCharged": "Cancelled outside the free window — a {amount} lei fee was charged.",
+    "cancelReleased": "Mission cancelled — the held amount was released in full.",
     "extendPolicy": "Extensions are approved in-app, with re-authorization.",
     "toPay": "Continue to payment"
   },

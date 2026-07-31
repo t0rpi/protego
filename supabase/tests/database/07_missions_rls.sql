@@ -64,11 +64,18 @@ select throws_ok(
   'quoted -> confirmed is refused before the payment stub is confirmed'
 );
 
-update public.missions set payment_stub_confirmed = true where id = :'normal_mission_id'::uuid;
+-- M5: a payment authorization now replaces the old payment_stub_confirmed
+-- boolean — record it as service_role (the only role allowed to write
+-- public.payments), then resume as alice.
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'normal_mission_id'::uuid, 'auth', 'pi_fixture_normal', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
 
 select lives_ok(
   format('update public.missions set status = %L where id = %L', 'confirmed', :'normal_mission_id'::text),
-  'quoted -> confirmed succeeds once risk=normal, verification_level=2 and the payment stub are all satisfied'
+  'quoted -> confirmed succeeds once risk=normal, verification_level=2 and a payment authorization are all satisfied'
 );
 
 -- 8-13: the high-risk path — never auto-confirms
@@ -130,7 +137,12 @@ from public.services where key = 'hourly'
 returning id as vehicle_mission_id \gset
 
 update public.missions set status = 'quoted' where id = :'vehicle_mission_id'::uuid;
-update public.missions set payment_stub_confirmed = true where id = :'vehicle_mission_id'::uuid;
+
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'vehicle_mission_id'::uuid, 'auth', 'pi_fixture_vehicle', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
 
 select throws_ok(
   format('update public.missions set status = %L where id = %L', 'confirmed', :'vehicle_mission_id'::text),

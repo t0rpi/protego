@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { TRACKING_PERSIST_INTERVAL_SECONDS, VEHICLE_CHECKLIST_PHOTO_KEYS, type VehiclePhotoKey } from "@protego/domain";
 import { supabase } from "../../../../lib/supabase";
 import { useAuth } from "../../../../lib/auth-context";
+import { captureMissionPayment } from "../../../../lib/payments";
 import { bookingStyles as s } from "../../../../lib/booking-styles";
 
 interface Brief {
@@ -260,6 +261,19 @@ export default function MissionScreen() {
       setError(completeError.message);
       return;
     }
+
+    // The capture amount was already computed and persisted by
+    // complete_mission() (real duration, capped at the original
+    // authorization) — this just tells Stripe to actually capture it.
+    // A failure here is logged but doesn't block the agent from
+    // finishing their shift; the capture can be retried from the admin
+    // payments screen.
+    try {
+      await captureMissionPayment(missionId);
+    } catch (captureError) {
+      console.error("capture-mission-payment failed:", captureError);
+    }
+
     if (session) {
       await supabase.from("agents").update({ is_available: true }).eq("id", session.user.id);
     }

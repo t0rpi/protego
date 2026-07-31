@@ -20,7 +20,12 @@ insert into public.missions (client_id, service_id, city, mobility, agent_count,
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission_id \gset
 update public.missions set status = 'quoted' where id = :'mission_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_id'::uuid, 'auth', 'pi_fixture_chat', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_id'::uuid;
 
 select tests.authenticate_as(:'dana_id'::uuid);
 select public.create_mission_offer(:'mission_id'::uuid, :'bob_id'::uuid) as offer_id \gset

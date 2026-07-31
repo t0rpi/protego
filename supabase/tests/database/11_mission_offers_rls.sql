@@ -39,25 +39,45 @@ insert into public.missions (client_id, service_id, city, mobility, agent_count,
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, 'Str. Exemplu 10, Oradea' from public.services where key = 'hourly'
 returning id as mission1_id \gset
 update public.missions set status = 'quoted' where id = :'mission1_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission1_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission1_id'::uuid, 'auth', 'pi_fixture_m1', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission1_id'::uuid;
 
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission2_id \gset
 update public.missions set status = 'quoted' where id = :'mission2_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission2_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission2_id'::uuid, 'auth', 'pi_fixture_m2', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission2_id'::uuid;
 
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission3_id \gset
 update public.missions set status = 'quoted' where id = :'mission3_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission3_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission3_id'::uuid, 'auth', 'pi_fixture_m3', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission3_id'::uuid;
 
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission4_id \gset
 update public.missions set status = 'quoted' where id = :'mission4_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission4_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission4_id'::uuid, 'auth', 'pi_fixture_m4', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission4_id'::uuid;
 
 -- mission5 stays in draft — used for the "not in the unassigned pool" case
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
@@ -68,13 +88,23 @@ insert into public.missions (client_id, service_id, city, mobility, agent_count,
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission6_id \gset
 update public.missions set status = 'quoted' where id = :'mission6_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission6_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission6_id'::uuid, 'auth', 'pi_fixture_m6', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission6_id'::uuid;
 
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
 select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
 returning id as mission7_id \gset
 update public.missions set status = 'quoted' where id = :'mission7_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission7_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission7_id'::uuid, 'auth', 'pi_fixture_m7', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission7_id'::uuid;
 
 select tests.authenticate_as(:'dana_id'::uuid);
 

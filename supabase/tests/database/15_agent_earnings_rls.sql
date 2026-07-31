@@ -19,11 +19,19 @@ insert into public.agents (id, status, is_available) values
 
 select tests.authenticate_as(:'alice_id'::uuid);
 
-insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
-select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2 from public.services where key = 'hourly'
+-- explicit weekday/daytime scheduled_at keeps the initial quote's
+-- coefficients (and this test's expected earnings) deterministic
+-- regardless of the real clock when the suite runs.
+insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, scheduled_at)
+select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, '2026-08-04T14:00:00Z' from public.services where key = 'hourly'
 returning id as mission_id \gset
 update public.missions set status = 'quoted' where id = :'mission_id'::uuid;
-update public.missions set payment_stub_confirmed = true, status = 'confirmed' where id = :'mission_id'::uuid;
+select tests.clear_authentication();
+set local role service_role;
+select public.record_payment_event(:'mission_id'::uuid, 'auth', 'pi_fixture_earnings', '1.00', 'requires_capture');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
+update public.missions set status = 'confirmed' where id = :'mission_id'::uuid;
 select public.create_quote_for_mission(:'mission_id'::uuid);
 
 select tests.authenticate_as(:'dana_id'::uuid);
@@ -80,7 +88,7 @@ select throws_ok(
 -- 5-6: the weekly aggregation view
 select is(
   (select total_amount from public.agent_weekly_earnings where agent_id = :'bob_id'::uuid),
-  321.86,
+  143.00,
   'agent_weekly_earnings aggregates to the same amount as the underlying ledger row'
 );
 

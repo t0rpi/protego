@@ -203,6 +203,8 @@
     "linePlatform": "Taxă platformă & asigurare",
     "total": "Total estimat",
     "cancelPolicy": "Anulare gratuită cu până la {min} min înainte de misiune.",
+    "cancelFeeCharged": "Anulare în afara ferestrei gratuite — s-a reținut o taxă de {amount} lei.",
+    "cancelReleased": "Misiune anulată — suma blocată a fost eliberată integral.",
     "extendPolicy": "Prelungirea se aprobă din aplicație, cu re-preautorizare.",
     "toPay": "Continuă spre plată"
   },

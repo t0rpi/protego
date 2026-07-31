@@ -28,10 +28,16 @@ export default async function AdminHomePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
       <p className="text-sm text-[var(--text-secondary)]">
-        PROTEGO — admin (M1: autentificat ca {profile.role})
+        PROTEGO — admin (autentificat ca {profile.role})
       </p>
+      <div className="flex gap-4 text-sm font-semibold text-[var(--gold)] underline">
+        <a href="/admin/pricing">Prețuri</a>
+        <a href="/admin/fleet">Flotă</a>
+        <a href="/admin/payments">Plăți</a>
+        <a href="/admin/payouts">Loturi de plată</a>
+      </div>
     </main>
   );
 }
