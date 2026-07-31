@@ -10,8 +10,15 @@ update public.profiles set role = 'dispatcher' where id = :'dana_id'::uuid;
 
 select tests.authenticate_as(:'alice_id'::uuid);
 
-insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours)
-select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2
+-- an explicit, safely-in-the-future weekday/daytime scheduled_at keeps
+-- this test deterministic — with no scheduled_at at all,
+-- create_quote_for_mission() would treat the booking as urgent (and,
+-- depending on the real clock when the suite runs, possibly night/
+-- weekend too), making the expected total time-of-run-dependent under
+-- v2.3's real coefficients (M2/M3 never had this risk: their
+-- coefficients were 1.0 no-ops).
+insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, scheduled_at)
+select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, '2026-08-04T14:00:00Z'
 from public.services where key = 'hourly'
 returning id as mission_id \gset
 
@@ -36,8 +43,8 @@ select ok(
 );
 
 select ok(
-  (select total_estimate from public.quotes where mission_id = :'mission_id'::uuid) = 459.80,
-  'the stored total matches compute_quote''s own math: (180*2 + 20) * 1.21 = 459.80'
+  (select total_estimate from public.quotes where mission_id = :'mission_id'::uuid) = 338.80,
+  'the stored total matches compute_quote''s own math (v2.3 rates): (130*2 + 20) * 1.21 = 338.80'
 );
 
 select tests.authenticate_as(:'bob_id'::uuid);

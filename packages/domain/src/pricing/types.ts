@@ -13,12 +13,23 @@ export interface PricingConfig {
   coefNight: number;
   coefWeekend: number;
   coefUrgent: number;
+  /** v2.3 §21 — combined night/weekend/urgent multiplier is capped here (1.5). */
+  coefCap: number;
   minBillingHours: number;
   degressiveThresholdHours: number | null;
   degressiveRate: number;
   platformFee: number;
   vatRate: number;
   freeCancelMinutes: number;
+  /** v2.3 §16 — floor on the labor/ride component (before platform fee + VAT). Confirmed for Protect Ride (60 lei) only; null elsewhere. */
+  minimumTotal: number | null;
+  /** v2.3 §23 — floor on the agent's computed earnings. Confirmed for Protect Ride (35 lei) only; null elsewhere — not invented for Escort/Hourly. */
+  agentMinimumPerMission: number | null;
+  /** v2.3 §22 */
+  cancellationFeePct: number;
+  cancellationFeeMinimum: number;
+  /** v2.3 §23 — fraction of the labor component paid to the agent (0.55), never of the total. */
+  agentSharePct: number;
 }
 
 export type ServiceKey = "protect_ride" | "escort" | "hourly";
@@ -36,7 +47,16 @@ export interface QuoteInput {
 }
 
 export interface QuoteLine {
-  label: "agent" | "vehicle" | "client_vehicle" | "distance" | "platform_fee" | "vat" | "overage";
+  label:
+    | "base"
+    | "distance"
+    | "minimum_adjustment"
+    | "agent"
+    | "vehicle"
+    | "client_vehicle"
+    | "platform_fee"
+    | "vat"
+    | "overage";
   amount: number;
 }
 
@@ -44,4 +64,6 @@ export interface Quote {
   lines: QuoteLine[];
   total: number;
   currency: "RON";
+  /** The part of `total` that is the agent's 55% share base — excludes vehicle cost and the platform fee. */
+  laborComponent: number;
 }

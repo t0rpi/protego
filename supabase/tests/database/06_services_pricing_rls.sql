@@ -47,9 +47,11 @@ select ok(
 
 -- The acceptance-tests.md M2 core requirement: admin edits a price,
 -- a brand new quote reflects it immediately, with no redeploy.
+-- v2.3 rates (§17): Hourly is 130 lei/h, on_foot has no separate
+-- vehicle line — (130*2 + 20) * 1.21 = 338.80.
 select ok(
-  (compute_quote('hourly', 'Oradea', 1, 2, null, 'on_foot', false, false, false) ->> 'total')::numeric = 459.80,
-  'quote before admin price change: (180*2 + 20) * 1.21 = 459.80'
+  (compute_quote('hourly', 'Oradea', 1, 2, null, 'on_foot', false, false, false) ->> 'total')::numeric = 338.80,
+  'quote before admin price change: (130*2 + 20) * 1.21 = 338.80'
 );
 
 select tests.authenticate_as(:'dana_id'::uuid);
@@ -60,8 +62,8 @@ select lives_ok(
 );
 
 select ok(
-  (compute_quote('hourly', 'Oradea', 1, 2, null, 'on_foot', false, false, false) ->> 'total')::numeric = 471.90,
-  'quote after admin price change reflects the new platform fee immediately: (180*2 + 30) * 1.21 = 471.90'
+  (compute_quote('hourly', 'Oradea', 1, 2, null, 'on_foot', false, false, false) ->> 'total')::numeric = 350.90,
+  'quote after admin price change reflects the new platform fee immediately: (130*2 + 30) * 1.21 = 350.90'
 );
 
 select * from finish();
