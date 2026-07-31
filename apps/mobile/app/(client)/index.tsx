@@ -16,7 +16,12 @@ export default function ClientHomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { session, loading } = useAuth();
-  const [profile, setProfile] = useState<{ role: string; verification_level: number } | null>(null);
+  // undefined = not fetched yet (used to gate the role redirect below so we
+  // don't flash the client UI at agents); null = fetched but no row/error,
+  // falls through to the client UI same as before this field existed.
+  const [profile, setProfile] = useState<
+    { role: string; verification_level: number } | null | undefined
+  >(undefined);
 
   useEffect(() => {
     if (!session) return;
@@ -38,6 +43,22 @@ export default function ClientHomeScreen() {
 
   if (!session) {
     return <Redirect href="/login" />;
+  }
+
+  // Role-based routing: this route ("/") is also where login/OTP redirect
+  // unconditionally after auth. Agents must never see the client home —
+  // wait for the profile fetch (role starts null) before deciding, so we
+  // don't flash the client UI first.
+  if (profile === undefined) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator color={tokens.color.base.gold} />
+      </View>
+    );
+  }
+
+  if (profile?.role === "agent") {
+    return <Redirect href="/agent" />;
   }
 
   return (
