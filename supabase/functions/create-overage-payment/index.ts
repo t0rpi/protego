@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       currency: "ron",
       capture_method: "manual",
       customer: profile.stripe_customer_id,
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: { mission_id, quote_id: overage.quote_id, payment_type: "overage_auth" },
     });
 

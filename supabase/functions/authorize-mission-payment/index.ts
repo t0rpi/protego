@@ -84,7 +84,10 @@ Deno.serve(async (req) => {
       currency: "ron",
       capture_method: "manual",
       customer: stripeCustomerId,
-      automatic_payment_methods: { enabled: true },
+      // Card-only for the pilot — no bank redirects/wallets, so no
+      // return_url is ever required and Stripe never emails the
+      // customer a "complete your payment" redirect notice.
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       metadata: { mission_id, quote_id: quote.id },
     });
 

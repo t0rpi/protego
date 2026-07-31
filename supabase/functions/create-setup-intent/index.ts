@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     const setupIntent = await stripe.setupIntents.create({
       customer: stripeCustomerId,
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
     });
 
     return jsonResponse({ client_secret: setupIntent.client_secret });

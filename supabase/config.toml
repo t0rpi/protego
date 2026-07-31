@@ -391,6 +391,16 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Stripe's webhook caller has no Supabase session — it sends a
+# stripe-signature header, never an Authorization JWT — so the
+# platform's default JWT gate must be off for this one function.
+# stripe-webhook verifies the request itself, via
+# stripe.webhooks.constructEventAsync() against STRIPE_WEBHOOK_SECRET
+# (see supabase/functions/stripe-webhook/index.ts) — that IS the real
+# authentication for this endpoint, not a Supabase JWT.
+[functions.stripe-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
