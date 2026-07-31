@@ -7,6 +7,8 @@ import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
 import { PaymentStep } from "../../../lib/payment-step";
+import { PlaceAutocompleteInput } from "../../../lib/place-autocomplete-input";
+import { computeRouteDistanceKm, type PlacePrediction } from "../../../lib/places";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 type Mobility = Database["public"]["Enums"]["mission_mobility"];
@@ -53,9 +55,19 @@ export default function BookingWizardScreen() {
 
   // step: where/when
   const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupPlaceId, setPickupPlaceId] = useState<string | null>(null);
   const [destinationAddress, setDestinationAddress] = useState("");
+  const [destinationPlaceId, setDestinationPlaceId] = useState<string | null>(null);
   const [durationHours, setDurationHours] = useState(MIN_DURATION[serviceKey]);
+  // Auto-computed from pickup/destination place ids (route-distance Edge
+  // Function) — M7 QA founder decision: a client can't know the real
+  // route km, so this is never typed manually anymore. Stays empty if
+  // either address wasn't picked from a suggestion or the lookup fails;
+  // compute_quote()'s default_distance_km stays as the server-side
+  // safety net for that case (20260731160002/160003).
   const [distanceKm, setDistanceKm] = useState("");
+  const [distanceLoading, setDistanceLoading] = useState(false);
+  const [distanceError, setDistanceError] = useState<string | null>(null);
 
   // step: when — scheduled_at exists on missions since M2, but the
   // wizard never collected it (booking always defaulted to "now"); M3
@@ -121,6 +133,31 @@ export default function BookingWizardScreen() {
       cancelled = true;
     };
   }, [session, missionId, serviceKey]);
+
+  const isRideForDistance = serviceKey === "protect_ride";
+  useEffect(() => {
+    if (!isRideForDistance || !pickupPlaceId || !destinationPlaceId) return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDistanceLoading(true);
+    setDistanceError(null);
+    computeRouteDistanceKm(pickupPlaceId, destinationPlaceId)
+      .then((km) => {
+        if (!cancelled) setDistanceKm(String(km));
+      })
+      .catch((err) => {
+        // Leave distanceKm empty on failure — compute_quote()'s
+        // default_distance_km fallback covers this, per the founder's
+        // explicit instruction that it stays only as a safety net.
+        if (!cancelled) setDistanceError(err instanceof Error ? err.message : "route lookup failed");
+      })
+      .finally(() => {
+        if (!cancelled) setDistanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRideForDistance, pickupPlaceId, destinationPlaceId]);
 
   useEffect(() => {
     if (!session) return;
@@ -294,23 +331,41 @@ export default function BookingWizardScreen() {
             <Text style={s.title}>{t("booking.route")}</Text>
             <View>
               <Text style={s.label}>{t("booking.pickupPh")}</Text>
-              <TextInput style={s.input} value={pickupAddress} onChangeText={setPickupAddress} />
+              <PlaceAutocompleteInput
+                value={pickupAddress}
+                onChangeText={(text) => {
+                  setPickupAddress(text);
+                  setPickupPlaceId(null);
+                }}
+                onSelect={(prediction: PlacePrediction) => {
+                  setPickupAddress(prediction.description);
+                  setPickupPlaceId(prediction.place_id);
+                }}
+              />
             </View>
             {isRide ? (
               <>
                 <View>
                   <Text style={s.label}>{t("booking.destPh")}</Text>
-                  <TextInput style={s.input} value={destinationAddress} onChangeText={setDestinationAddress} />
-                </View>
-                <View>
-                  <Text style={s.label}>km</Text>
-                  <TextInput
-                    style={s.input}
-                    value={distanceKm}
-                    onChangeText={setDistanceKm}
-                    keyboardType="numeric"
+                  <PlaceAutocompleteInput
+                    value={destinationAddress}
+                    onChangeText={(text) => {
+                      setDestinationAddress(text);
+                      setDestinationPlaceId(null);
+                    }}
+                    onSelect={(prediction: PlacePrediction) => {
+                      setDestinationAddress(prediction.description);
+                      setDestinationPlaceId(prediction.place_id);
+                    }}
                   />
                 </View>
+                {distanceLoading ? (
+                  <Text style={s.note}>{t("booking.distanceCalculating")}</Text>
+                ) : distanceKm ? (
+                  <Text style={s.note}>{t("booking.distanceComputed", { km: distanceKm })}</Text>
+                ) : distanceError ? (
+                  <Text style={s.note}>{t("booking.distanceUnavailable")}</Text>
+                ) : null}
               </>
             ) : (
               <View>

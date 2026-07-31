@@ -9,6 +9,20 @@
 import Stripe from "npm:stripe@17";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
+/**
+ * M7 QA fix — Google Maps Platform key, server-only (Places
+ * Autocomplete + Directions), same trust boundary as
+ * STRIPE_SECRET_KEY: never shipped to the mobile app, only these two
+ * proxy functions (places-autocomplete, route-distance) ever see it.
+ */
+export function getGoogleMapsApiKey(): string {
+  const key = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  if (!key) {
+    throw new Error("GOOGLE_MAPS_API_KEY is not set (supabase secrets set GOOGLE_MAPS_API_KEY=...)");
+  }
+  return key;
+}
+
 export function getStripeClient(): Stripe {
   const key = Deno.env.get("STRIPE_SECRET_KEY");
   if (!key) {
