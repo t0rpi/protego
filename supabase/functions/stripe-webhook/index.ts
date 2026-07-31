@@ -4,6 +4,13 @@
 // recorded via record_webhook_event() before any side effect, so a
 // redelivered event is a no-op the second time (Stripe webhooks are
 // explicitly at-least-once delivery, never exactly-once).
+//
+// Requires verify_jwt = false in supabase/config.toml ([functions.
+// stripe-webhook]) — Stripe's caller has no Supabase session, only a
+// stripe-signature header, so the platform's default JWT gate would
+// otherwise reject every delivery with 401 before this code ever runs.
+// This function verifies the request itself, below, against
+// STRIPE_WEBHOOK_SECRET.
 import Stripe from "npm:stripe@17";
 import { getStripeClient, getSupabaseAdminClient, jsonResponse } from "../_shared/clients.ts";
 
