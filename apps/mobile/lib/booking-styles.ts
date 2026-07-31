@@ -69,6 +69,7 @@ export const bookingStyles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: tokens.spacing[2],
   },
   chip: {
