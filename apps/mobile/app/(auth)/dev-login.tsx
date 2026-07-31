@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Text, TextInput, Pressable, View, ActivityIndicator } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { authStyles } from "../../lib/auth-styles";
@@ -17,6 +26,7 @@ export default function DevLoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,55 +49,68 @@ export default function DevLoginScreen() {
   const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
 
   return (
-    <View style={authStyles.container}>
-      <Text style={authStyles.title}>Dev login (test only)</Text>
-      <Text style={authStyles.intro}>
-        Email/password sign-in for seeded test accounts — see docs/testing/demo-accounts.md. Not
-        part of the real app flow.
-      </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView contentContainerStyle={authStyles.container} keyboardShouldPersistTaps="handled">
+        <Text style={authStyles.title}>Dev login (test only)</Text>
+        <Text style={authStyles.intro}>
+          Email/password sign-in for seeded test accounts — see docs/testing/demo-accounts.md. Not
+          part of the real app flow.
+        </Text>
 
-      <View>
-        <Text style={authStyles.label}>Email</Text>
-        <TextInput
-          style={authStyles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="agent.demo@protego-test.ro"
-          placeholderTextColor="#6B7178"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-        />
-      </View>
+        <View>
+          <Text style={authStyles.label}>Email</Text>
+          <TextInput
+            style={authStyles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="agent.demo@protego-test.ro"
+            placeholderTextColor="#6B7178"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+        </View>
 
-      <View>
-        <Text style={authStyles.label}>Password</Text>
-        <TextInput
-          style={authStyles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          placeholderTextColor="#6B7178"
-          secureTextEntry
-          autoCapitalize="none"
-          textContentType="password"
-        />
-      </View>
+        <View>
+          <Text style={authStyles.label}>Password</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              style={[authStyles.input, { flex: 1 }]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#6B7178"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              textContentType="password"
+            />
+            <Pressable
+              onPress={() => setShowPassword((v) => !v)}
+              style={{ position: "absolute", right: 12, padding: 8 }}
+            >
+              <Text style={authStyles.linkText}>{showPassword ? "Ascunde" : "Arată"}</Text>
+            </Pressable>
+          </View>
+        </View>
 
-      {error ? <Text style={authStyles.error}>{error}</Text> : null}
+        {error ? <Text style={authStyles.error}>{error}</Text> : null}
 
-      <Pressable
-        style={[authStyles.button, !canSubmit && authStyles.buttonDisabled]}
-        onPress={handleSignIn}
-        disabled={!canSubmit}
-      >
-        {loading ? (
-          <ActivityIndicator color="#161307" />
-        ) : (
-          <Text style={authStyles.buttonText}>Sign in</Text>
-        )}
-      </Pressable>
-    </View>
+        <Pressable
+          style={[authStyles.button, !canSubmit && authStyles.buttonDisabled]}
+          onPress={handleSignIn}
+          disabled={!canSubmit}
+        >
+          {loading ? (
+            <ActivityIndicator color="#161307" />
+          ) : (
+            <Text style={authStyles.buttonText}>Sign in</Text>
+          )}
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
