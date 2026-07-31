@@ -57,6 +57,16 @@ export default function ClientHomeScreen() {
         </Pressable>
       ) : null}
 
+      <Pressable style={styles.button} onPress={() => router.push("/booking/protect_ride")}>
+        <Text style={styles.buttonText}>{t("home.rideTitle")}</Text>
+      </Pressable>
+      <Pressable style={styles.button} onPress={() => router.push("/booking/escort")}>
+        <Text style={styles.buttonText}>{t("home.escortTitle")}</Text>
+      </Pressable>
+      <Pressable style={styles.button} onPress={() => router.push("/booking/hourly")}>
+        <Text style={styles.buttonText}>{t("home.hourlyTitle")}</Text>
+      </Pressable>
+
       <Pressable style={styles.button} onPress={() => supabase.auth.signOut()}>
         <Text style={styles.buttonText}>{t("common.close")}</Text>
       </Pressable>

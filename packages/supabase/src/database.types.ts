@@ -126,6 +126,45 @@ export type Database = {
         }
         Relationships: []
       }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          initiator_id: string
+          mission_id: string | null
+          split_strategy: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          initiator_id: string
+          mission_id?: string | null
+          split_strategy?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          initiator_id?: string
+          mission_id?: string | null
+          split_strategy?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       identity_verifications: {
         Row: {
           created_at: string
@@ -173,6 +212,242 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_vehicle_checklists: {
+        Row: {
+          client_signature_at: string | null
+          consent_signed_at: string | null
+          created_at: string
+          insurance_confirmed: boolean
+          mission_id: string
+          photos: Json
+          updated_at: string
+        }
+        Insert: {
+          client_signature_at?: string | null
+          consent_signed_at?: string | null
+          created_at?: string
+          insurance_confirmed?: boolean
+          mission_id: string
+          photos?: Json
+          updated_at?: string
+        }
+        Update: {
+          client_signature_at?: string | null
+          consent_signed_at?: string | null
+          created_at?: string
+          insurance_confirmed?: boolean
+          mission_id?: string
+          photos?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_vehicle_checklists_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: true
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missions: {
+        Row: {
+          agent_count: number
+          agent_preference: Database["public"]["Enums"]["mission_agent_preference"]
+          city: string
+          client_id: string
+          context_details: string | null
+          context_kind: Database["public"]["Enums"]["mission_context_kind"]
+          context_threat_known: boolean
+          created_at: string
+          destination_address: string | null
+          distance_km: number | null
+          dress_code: Database["public"]["Enums"]["mission_dress_code"]
+          duration_hours: number | null
+          id: string
+          mobility: Database["public"]["Enums"]["mission_mobility"]
+          payment_stub_confirmed: boolean
+          pickup_address: string | null
+          protected_person_id: string | null
+          risk_level: string
+          scheduled_at: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["mission_status"]
+          updated_at: string
+          verification_code: string | null
+        }
+        Insert: {
+          agent_count?: number
+          agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
+          city: string
+          client_id: string
+          context_details?: string | null
+          context_kind?: Database["public"]["Enums"]["mission_context_kind"]
+          context_threat_known?: boolean
+          created_at?: string
+          destination_address?: string | null
+          distance_km?: number | null
+          dress_code?: Database["public"]["Enums"]["mission_dress_code"]
+          duration_hours?: number | null
+          id?: string
+          mobility?: Database["public"]["Enums"]["mission_mobility"]
+          payment_stub_confirmed?: boolean
+          pickup_address?: string | null
+          protected_person_id?: string | null
+          risk_level?: string
+          scheduled_at?: string | null
+          service_id: string
+          status?: Database["public"]["Enums"]["mission_status"]
+          updated_at?: string
+          verification_code?: string | null
+        }
+        Update: {
+          agent_count?: number
+          agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
+          city?: string
+          client_id?: string
+          context_details?: string | null
+          context_kind?: Database["public"]["Enums"]["mission_context_kind"]
+          context_threat_known?: boolean
+          created_at?: string
+          destination_address?: string | null
+          distance_km?: number | null
+          dress_code?: Database["public"]["Enums"]["mission_dress_code"]
+          duration_hours?: number | null
+          id?: string
+          mobility?: Database["public"]["Enums"]["mission_mobility"]
+          payment_stub_confirmed?: boolean
+          pickup_address?: string | null
+          protected_person_id?: string | null
+          risk_level?: string
+          scheduled_at?: string | null
+          service_id?: string
+          status?: Database["public"]["Enums"]["mission_status"]
+          updated_at?: string
+          verification_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_protected_person_id_fkey"
+            columns: ["protected_person_id"]
+            isOneToOne: false
+            referencedRelation: "protected_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          commission_rate: number | null
+          company_name: string
+          created_at: string
+          id: string
+          insurance: string | null
+          license_no: string | null
+        }
+        Insert: {
+          commission_rate?: number | null
+          company_name: string
+          created_at?: string
+          id?: string
+          insurance?: string | null
+          license_no?: string | null
+        }
+        Update: {
+          commission_rate?: number | null
+          company_name?: string
+          created_at?: string
+          id?: string
+          insurance?: string | null
+          license_no?: string | null
+        }
+        Relationships: []
+      }
+      pricing_config: {
+        Row: {
+          base: number
+          city: string
+          coef_night: number
+          coef_urgent: number
+          coef_weekend: number
+          created_at: string
+          degressive_rate: number
+          degressive_threshold_hours: number | null
+          free_cancel_minutes: number
+          id: string
+          min_billing_hours: number
+          per_hour_agent: number
+          per_hour_vehicle: number
+          per_km: number
+          platform_fee: number
+          service_id: string
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          base?: number
+          city: string
+          coef_night?: number
+          coef_urgent?: number
+          coef_weekend?: number
+          created_at?: string
+          degressive_rate?: number
+          degressive_threshold_hours?: number | null
+          free_cancel_minutes?: number
+          id?: string
+          min_billing_hours?: number
+          per_hour_agent?: number
+          per_hour_vehicle?: number
+          per_km?: number
+          platform_fee?: number
+          service_id: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          base?: number
+          city?: string
+          coef_night?: number
+          coef_urgent?: number
+          coef_weekend?: number
+          created_at?: string
+          degressive_rate?: number
+          degressive_threshold_hours?: number | null
+          free_cancel_minutes?: number
+          id?: string
+          min_billing_hours?: number
+          per_hour_agent?: number
+          per_hour_vehicle?: number
+          per_km?: number
+          platform_fee?: number
+          service_id?: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_config_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -239,11 +514,158 @@ export type Database = {
           },
         ]
       }
+      quotes: {
+        Row: {
+          breakdown: Json
+          created_at: string
+          currency: string
+          id: string
+          mission_id: string
+          total_estimate: number
+        }
+        Insert: {
+          breakdown: Json
+          created_at?: string
+          currency?: string
+          id?: string
+          mission_id: string
+          total_estimate: number
+        }
+        Update: {
+          breakdown?: Json
+          created_at?: string
+          currency?: string
+          id?: string
+          mission_id?: string
+          total_estimate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_city_status: {
+        Row: {
+          city: string
+          created_at: string
+          enabled: boolean
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          enabled?: boolean
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          enabled?: boolean
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_city_status_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          name: string
+          updated_at: string
+          wave: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          name: string
+          updated_at?: string
+          wave: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          name?: string
+          updated_at?: string
+          wave?: number
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          plan: string
+          renews_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan: string
+          renews_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan?: string
+          renews_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      compute_quote: {
+        Args: {
+          p_agent_count: number
+          p_city: string
+          p_hours: number
+          p_km: number
+          p_mobility: string
+          p_night?: boolean
+          p_service_key: string
+          p_urgent?: boolean
+          p_weekend?: boolean
+        }
+        Returns: Json
+      }
+      create_quote_for_mission: {
+        Args: { p_mission_id: string }
+        Returns: string
+      }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -286,6 +708,24 @@ export type Database = {
       agent_source: "elite" | "verified"
       agent_status: "in_review" | "approved" | "active" | "blocked"
       identity_verification_status: "pending" | "approved" | "rejected"
+      mission_agent_preference: "any" | "female" | "male"
+      mission_context_kind: "usual" | "stranger" | "atm" | "club"
+      mission_dress_code: "formal" | "casual" | "discreet"
+      mission_mobility: "protego_vehicle" | "client_vehicle" | "on_foot"
+      mission_status:
+        | "draft"
+        | "quoted"
+        | "review"
+        | "confirmed"
+        | "assigned"
+        | "enroute"
+        | "arrived"
+        | "active"
+        | "done"
+        | "cancelled_client"
+        | "cancelled_agent"
+        | "cancelled_dispatcher"
+        | "no_agent_available"
       protected_person_relation:
         | "self"
         | "child"
@@ -431,6 +871,25 @@ export const Constants = {
       agent_source: ["elite", "verified"],
       agent_status: ["in_review", "approved", "active", "blocked"],
       identity_verification_status: ["pending", "approved", "rejected"],
+      mission_agent_preference: ["any", "female", "male"],
+      mission_context_kind: ["usual", "stranger", "atm", "club"],
+      mission_dress_code: ["formal", "casual", "discreet"],
+      mission_mobility: ["protego_vehicle", "client_vehicle", "on_foot"],
+      mission_status: [
+        "draft",
+        "quoted",
+        "review",
+        "confirmed",
+        "assigned",
+        "enroute",
+        "arrived",
+        "active",
+        "done",
+        "cancelled_client",
+        "cancelled_agent",
+        "cancelled_dispatcher",
+        "no_agent_available",
+      ],
       protected_person_relation: [
         "self",
         "child",
