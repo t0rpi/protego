@@ -116,7 +116,10 @@
     "intro": "Primesc link web cu locația ta live — manual sau automat la SOS / Walk With Me expirat. Nu au nevoie de aplicație.",
     "sendLink": "Trimite link",
     "add": "+ Adaugă persoană",
-    "sent": "Link live trimis · {name}"
+    "sent": "Link live trimis · {name}",
+    "namePlaceholder": "Nume",
+    "phonePlaceholder": "Telefon",
+    "remove": "Elimină"
   },
   "fake": {
     "intro": "Telefonul „sună” cu un apel credibil, ca să poți pleca dintr-o situație incomodă.",

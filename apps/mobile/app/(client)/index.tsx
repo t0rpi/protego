@@ -67,6 +67,10 @@ export default function ClientHomeScreen() {
         <Text style={styles.buttonText}>{t("home.hourlyTitle")}</Text>
       </Pressable>
 
+      <Pressable style={styles.button} onPress={() => router.push("/shield")}>
+        <Text style={styles.buttonText}>{t("tabs.shield")}</Text>
+      </Pressable>
+
       <Pressable style={styles.button} onPress={() => supabase.auth.signOut()}>
         <Text style={styles.buttonText}>{t("common.close")}</Text>
       </Pressable>

@@ -1254,6 +1254,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shield_contacts: {
+        Row: {
+          app_user_id: string | null
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          phone: string
+        }
+        Insert: {
+          app_user_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          phone: string
+        }
+        Update: {
+          app_user_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shield_contacts_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shield_contacts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shield_events: {
         Row: {
           acknowledged_at: string | null
@@ -1323,6 +1365,90 @@ export type Database = {
             columns: ["triggered_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shield_locations: {
+        Row: {
+          id: string
+          lat: number
+          lng: number
+          owner_id: string
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          lat: number
+          lng: number
+          owner_id: string
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          lat?: number
+          lng?: number
+          owner_id?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shield_locations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shield_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          owner_id: string
+          revoked_at: string | null
+          source_event_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          owner_id: string
+          revoked_at?: string | null
+          source_event_id?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          owner_id?: string
+          revoked_at?: string | null
+          source_event_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shield_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shield_share_links_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shield_share_links_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "shield_events"
             referencedColumns: ["id"]
           },
         ]
@@ -1454,6 +1580,72 @@ export type Database = {
         }
         Relationships: []
       }
+      walk_with_me_sessions: {
+        Row: {
+          checked_in_at: string | null
+          created_at: string
+          destination_lat: number | null
+          destination_lng: number | null
+          destination_text: string
+          estimated_minutes: number
+          expires_at: string
+          grace_minutes: number
+          id: string
+          notified_at: string | null
+          shield_event_id: string | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          created_at?: string
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_text: string
+          estimated_minutes: number
+          expires_at: string
+          grace_minutes: number
+          id?: string
+          notified_at?: string | null
+          shield_event_id?: string | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          created_at?: string
+          destination_lat?: number | null
+          destination_lng?: number | null
+          destination_text?: string
+          estimated_minutes?: number
+          expires_at?: string
+          grace_minutes?: number
+          id?: string
+          notified_at?: string | null
+          shield_event_id?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walk_with_me_sessions_shield_event_id_fkey"
+            columns: ["shield_event_id"]
+            isOneToOne: false
+            referencedRelation: "shield_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walk_with_me_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       agent_mission_briefs: {
@@ -1562,6 +1754,14 @@ export type Database = {
         Returns: number
       }
       cancel_sos: { Args: { p_event_id: string }; Returns: undefined }
+      cancel_walk_with_me: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
+      check_in_walk_with_me: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       complete_mission: {
         Args: { p_mission_id: string; p_summary?: string }
         Returns: Json
@@ -1605,6 +1805,7 @@ export type Database = {
         Args: { p_mission_id: string }
         Returns: string
       }
+      create_shield_share_link: { Args: never; Returns: string }
       create_shift_handover: { Args: { p_note?: string }; Returns: string }
       current_user_role: {
         Args: never
@@ -1614,13 +1815,25 @@ export type Database = {
         Args: { p_offer_id: string }
         Returns: undefined
       }
+      ensure_shield_share_link: {
+        Args: { p_owner_id: string; p_source_event_id?: string }
+        Returns: string
+      }
       expire_mission_offer: { Args: { p_offer_id: string }; Returns: undefined }
       expire_stale_mission_offers: { Args: never; Returns: undefined }
+      expire_stale_walk_with_me_sessions: { Args: never; Returns: undefined }
+      extend_walk_with_me: {
+        Args: { p_extra_minutes?: number; p_session_id: string }
+        Returns: undefined
+      }
       get_shared_mission_status: { Args: { p_token: string }; Returns: Json }
+      get_shared_shield_status: { Args: { p_token: string }; Returns: Json }
+      is_shield_public_enabled: { Args: never; Returns: boolean }
       is_vehicle_photo_checklist_complete: {
         Args: { p_photos: Json }
         Returns: boolean
       }
+      is_weekend_pricing_window: { Args: { p_when: string }; Returns: boolean }
       log_audit_event: {
         Args: {
           p_action: string
@@ -1632,6 +1845,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_fake_call: { Args: never; Returns: string }
       mark_payout_batch_paid: {
         Args: { p_batch_id: string }
         Returns: undefined
@@ -1658,6 +1872,10 @@ export type Database = {
           p_type: Database["public"]["Enums"]["payment_type"]
         }
         Returns: string
+      }
+      record_shield_location: {
+        Args: { p_lat: number; p_lng: number }
+        Returns: undefined
       }
       record_webhook_event: {
         Args: { p_event_id: string; p_event_type: string }
@@ -1693,6 +1911,19 @@ export type Database = {
       start_mission_protection: {
         Args: { p_entered_code: string; p_mission_id: string }
         Returns: undefined
+      }
+      start_walk_with_me: {
+        Args: {
+          p_destination_lat?: number
+          p_destination_lng?: number
+          p_destination_text: string
+          p_estimated_minutes: number
+        }
+        Returns: string
+      }
+      trigger_shield_sos: {
+        Args: { p_lat?: number; p_lng?: number }
+        Returns: string
       }
       trigger_sos: {
         Args: { p_lat?: number; p_lng?: number; p_mission_id: string }
@@ -1740,6 +1971,7 @@ export type Database = {
         | "agent_arrived"
         | "mission_completed"
         | "sos_acknowledged"
+        | "wwm_check_in_overdue"
       payment_status:
         | "requires_capture"
         | "succeeded"
@@ -1927,6 +2159,7 @@ export const Constants = {
         "agent_arrived",
         "mission_completed",
         "sos_acknowledged",
+        "wwm_check_in_overdue",
       ],
       payment_status: [
         "requires_capture",

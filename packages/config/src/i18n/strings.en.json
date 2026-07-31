@@ -116,7 +116,10 @@
     "intro": "They receive a web link with your live location — manually or automatically on SOS / expired Walk With Me. No app needed.",
     "sendLink": "Send link",
     "add": "+ Add person",
-    "sent": "Live link sent · {name}"
+    "sent": "Live link sent · {name}",
+    "namePlaceholder": "Name",
+    "phonePlaceholder": "Phone",
+    "remove": "Remove"
   },
   "fake": {
     "intro": "Your phone “rings” with a believable call so you can leave an uncomfortable situation.",
