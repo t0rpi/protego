@@ -6,12 +6,12 @@ import { supabase } from "../../lib/supabase";
 import { authStyles } from "../../lib/auth-styles";
 
 /**
- * OTP confirmation. Note: design/strings.ro.json's auth.terms promises a
- * "cod SMS de 4 cifre", but Supabase phone-OTP codes are 6 digits and the
- * CLI's config.toml has no per-SMS otp_length override (only
- * [auth.email].otp_length / [auth.mfa.phone].otp_length exist) — this
- * screen accepts what Supabase actually sends (6 digits), not the design
- * copy's stated 4. Flagged for design/copy follow-up, not silently changed.
+ * OTP confirmation. Supabase phone-OTP codes are 6 digits (no per-SMS
+ * otp_length override exists in config.toml — only [auth.email].otp_length /
+ * [auth.mfa.phone].otp_length). packages/config strings corrected to say
+ * 6 digits (2026-07-31); design/strings.ro.json + design/HANDOFF.md still
+ * say 4 — design-source mismatch, not fixed here (not this project's file
+ * to rewrite unilaterally).
  */
 export default function OtpScreen() {
   const { t } = useTranslation();

@@ -36,7 +36,7 @@
     "phone": "Telefon",
     "email": "Email (facturi & rapoarte)",
     "sendCode": "Trimite codul",
-    "terms": "Primești un cod SMS de 4 cifre. Continuând, accepți Termenii și Politica de confidențialitate.",
+    "terms": "Primești un cod SMS de 6 cifre. Continuând, accepți Termenii și Politica de confidențialitate.",
     "otpTitle": "Confirmă numărul",
     "otpSentTo": "Codul trimis la {phone}",
     "otpResend": "Retrimite codul în {time}"

@@ -36,7 +36,7 @@
     "phone": "Phone",
     "email": "Email (invoices & reports)",
     "sendCode": "Send code",
-    "terms": "You'll receive a 4-digit SMS code. By continuing you accept the Terms and the Privacy Policy.",
+    "terms": "You'll receive a 6-digit SMS code. By continuing you accept the Terms and the Privacy Policy.",
     "otpTitle": "Confirm your number",
     "otpSentTo": "Code sent to {phone}",
     "otpResend": "Resend code in {time}"

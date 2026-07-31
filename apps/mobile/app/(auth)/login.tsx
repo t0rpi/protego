@@ -74,6 +74,12 @@ export default function LoginScreen() {
       <Link href="/register" style={authStyles.linkRow}>
         <Text style={authStyles.linkText}>{t("onboarding.ctaLast")}</Text>
       </Link>
+
+      {__DEV__ ? (
+        <Link href="/dev-login" style={authStyles.linkRow}>
+          <Text style={[authStyles.linkText, { opacity: 0.5 }]}>Dev login (test only)</Text>
+        </Link>
+      ) : null}
     </View>
   );
 }
