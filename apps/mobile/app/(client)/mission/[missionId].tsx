@@ -3,11 +3,11 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { tokens } from "@protego/ui";
-import { useStripe } from "@stripe/stripe-react-native";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
-import { cancelMissionPayment, createOveragePayment } from "../../../lib/payments";
+import { cancelMissionPayment } from "../../../lib/payments";
 import { bookingStyles as s } from "../../../lib/booking-styles";
+import { OverageButton } from "../../../lib/overage-button";
 
 interface MissionInfo {
   status: string;
@@ -44,12 +44,10 @@ export default function ClientMissionScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [mission, setMission] = useState<MissionInfo | null>(null);
   const [receipt, setReceipt] = useState<{ lines: ReceiptLine[]; total: number } | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const [overageBusy, setOverageBusy] = useState(false);
   const [position, setPosition] = useState<{ lat: number; lng: number; recorded_at: string } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageBody, setMessageBody] = useState("");
@@ -227,33 +225,6 @@ export default function ClientMissionScreen() {
     setCancelBusy(false);
   }
 
-  /** audit §4.4 — a new PaymentIntent, confirmed the same way as the
-   * original booking payment; never applied without this explicit step. */
-  async function requestOverage(hours: number) {
-    if (!missionId) return;
-    setOverageBusy(true);
-    setError(null);
-    try {
-      const { client_secret } = await createOveragePayment(missionId, hours);
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: "PROTEGO",
-        paymentIntentClientSecret: client_secret,
-      });
-      if (initError) {
-        setError(initError.message);
-        setOverageBusy(false);
-        return;
-      }
-      const { error: presentError } = await presentPaymentSheet();
-      if (presentError) {
-        setError(presentError.message);
-      }
-    } catch (overageError) {
-      setError(overageError instanceof Error ? overageError.message : "eroare la prelungire");
-    }
-    setOverageBusy(false);
-  }
-
   if (!mission) {
     return (
       <View style={s.container}>
@@ -372,13 +343,12 @@ export default function ClientMissionScreen() {
               <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20 }}>SOS</Text>
             </Pressable>
 
-            <Pressable
-              style={[s.ghostButton, overageBusy && s.buttonDisabled]}
-              onPress={() => requestOverage(1)}
-              disabled={overageBusy}
-            >
-              <Text style={s.ghostButtonText}>+1h ({t("quote.extendPolicy")})</Text>
-            </Pressable>
+            <OverageButton
+              missionId={missionId}
+              hours={1}
+              label={`+1h (${t("quote.extendPolicy")})`}
+              onError={setError}
+            />
           </>
         ) : null}
 

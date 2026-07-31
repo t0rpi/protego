@@ -1,6 +1,5 @@
 import "../lib/i18n";
 import { Stack } from "expo-router";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { AuthProvider } from "../lib/auth-context";
 
 /**
@@ -8,14 +7,20 @@ import { AuthProvider } from "../lib/auth-context";
  * the (auth) screens. Font loading (Cinzel/Manrope) and the component
  * library land later, alongside packages/ui's real components (see
  * design/HANDOFF.md §3) — not needed yet for functional auth screens.
- * M5 adds StripeProvider (test mode only, publishable key is not secret).
+ *
+ * Deliberately NOT wrapped in <StripeProvider> here (M7 change — it was
+ * here from M5 through M6): @stripe/stripe-react-native is a native
+ * module (see app.json's plugins), which plain Expo Go cannot load at
+ * all. Mounting StripeProvider unconditionally at the root meant the
+ * entire app failed to boot in Expo Go. It's now mounted locally, only
+ * where actually needed (lib/payment-step.tsx, lib/overage-button.tsx),
+ * so every other screen stays Expo-Go-testable; only those two specific
+ * payment actions require an EAS dev-client build.
  */
 export default function RootLayout() {
   return (
-    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""}>
-      <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
-    </StripeProvider>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </AuthProvider>
   );
 }

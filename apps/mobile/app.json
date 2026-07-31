@@ -9,12 +9,28 @@
     "web": {
       "output": "static"
     },
+    "android": {
+      "package": "ro.protego.app"
+    },
     "plugins": [
       "expo-router",
-      "@stripe/stripe-react-native"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.ro.protego",
+          "enableGooglePay": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "db148458-12e8-4c79-84f5-ae811a053448"
+      }
+    },
+    "owner": "torpi"
   }
 }
