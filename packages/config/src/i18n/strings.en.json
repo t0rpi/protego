@@ -145,6 +145,8 @@
     "distanceComputed": "Distance: {{km}} km",
     "distanceUnavailable": "Couldn't calculate the distance automatically — an estimate will be used.",
     "usingAddress": "Using address: {{address}}",
+    "confirmAddressesHint": "Confirm the addresses to continue.",
+    "confirmVehicleHint": "Check all 3 conditions to continue.",
     "zoneNote": "We operate in the Oradea area (pilot city).",
     "whenTitle": "When",
     "start": "Start",

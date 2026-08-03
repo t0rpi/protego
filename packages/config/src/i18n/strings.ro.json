@@ -145,6 +145,8 @@
     "distanceComputed": "Distanță: {{km}} km",
     "distanceUnavailable": "Nu am putut calcula distanța automat — se va folosi o estimare.",
     "usingAddress": "Folosim adresa: {{address}}",
+    "confirmAddressesHint": "Confirmă adresele pentru a continua.",
+    "confirmVehicleHint": "Bifează toate cele 3 condiții pentru a continua.",
     "zoneNote": "Operăm în zona Oradea (oraș pilot).",
     "whenTitle": "Când",
     "start": "Pornire",

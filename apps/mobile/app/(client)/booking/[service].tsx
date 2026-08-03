@@ -236,6 +236,19 @@ export default function BookingWizardScreen() {
 
   const isRide = serviceKey === "protect_ride";
 
+  // Founder + coordinator decision (2026-08-03): address confirmation is
+  // mandatory, not just available — a real agent gets dispatched to
+  // whatever ends up stored on the mission, so raw unconfirmed text
+  // ("nothing ambiguous advances") must never proceed past this step.
+  const canContinueWhere = Boolean(pickupPlaceId) && (!isRide || Boolean(destinationPlaceId));
+
+  // Same "nothing ambiguous advances" principle: a client_vehicle
+  // mission cannot proceed without all 3 legal/safety conditions
+  // checked (consent, insurance, signature) — the wizard previously let
+  // this through unchecked.
+  const canContinueMobility =
+    mobility !== "client_vehicle" || (vehicleConsent && vehicleInsurance && vehicleSignature);
+
   /** null = "acum" (missions.scheduled_at's own convention — see that column's comment). */
   function resolveScheduledAt(): { value: string | null; error: string | null } {
     if (whenChoice === "now") return { value: null, error: null };
@@ -455,7 +468,12 @@ export default function BookingWizardScreen() {
               </View>
             )}
             <Text style={s.note}>{t("booking.zoneNote")}</Text>
-            <Pressable style={s.button} onPress={() => setStep("when")}>
+            {!canContinueWhere ? <Text style={s.note}>{t("booking.confirmAddressesHint")}</Text> : null}
+            <Pressable
+              style={[s.button, !canContinueWhere && s.buttonDisabled]}
+              onPress={() => setStep("when")}
+              disabled={!canContinueWhere}
+            >
               <Text style={s.buttonText}>{t("common.continue")}</Text>
             </Pressable>
           </>
@@ -674,7 +692,14 @@ export default function BookingWizardScreen() {
               </View>
             )}
 
-            <Pressable style={s.button} onPress={() => setStep("context")}>
+            {mobility === "client_vehicle" && !canContinueMobility ? (
+              <Text style={s.note}>{t("booking.confirmVehicleHint")}</Text>
+            ) : null}
+            <Pressable
+              style={[s.button, !canContinueMobility && s.buttonDisabled]}
+              onPress={() => setStep("context")}
+              disabled={!canContinueMobility}
+            >
               <Text style={s.buttonText}>{t("common.continue")}</Text>
             </Pressable>
           </>
