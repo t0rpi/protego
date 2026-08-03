@@ -1,0 +1,15 @@
+-- Founder QA: Escorta/Hourly with "Vehiculul clientului" failed at the
+-- context step with "permission denied for table
+-- mission_vehicle_checklists". Root cause confirmed by direct
+-- reproduction: the client's .upsert() call sends
+-- Prefer: resolution=merge-duplicates, which PostgREST turns into
+-- INSERT ... ON CONFLICT (mission_id) DO UPDATE SET ... -- and that DO
+-- UPDATE clause requires UPDATE privilege on mission_id itself (the
+-- conflict target), even though its value never actually changes on a
+-- real upsert. The original column-scoped grant
+-- (20260731100004_mission_vehicle_checklists.sql) only covered the 3
+-- client-owned fields, missing mission_id -- same bug class as the
+-- protected_person_id grant gap on missions (20260731160001).
+-- photos stays ungranted (agent-side upload, per that migration's own
+-- comment) -- not touched here.
+grant update (mission_id) on public.mission_vehicle_checklists to authenticated;

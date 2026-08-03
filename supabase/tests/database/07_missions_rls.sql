@@ -1,6 +1,6 @@
 begin;
 
-select plan(19);
+select plan(20);
 
 select tests.create_test_user('alice-mission') as alice_id \gset
 select tests.create_test_user('bob-mission') as bob_id \gset
@@ -183,6 +183,26 @@ select throws_ok(
 select lives_ok(
   format('update public.missions set status = %L where id = %L', 'confirmed', :'vehicle_mission_id'::text),
   'client-vehicle mission confirms once consent+insurance+signature are all recorded (photos not required yet)'
+);
+
+-- Founder QA (2026-08-03): the mobile app's .upsert() call sends
+-- Prefer: resolution=merge-duplicates, which PostgREST turns into
+-- INSERT ... ON CONFLICT (mission_id) DO UPDATE -- and that DO UPDATE
+-- clause needs UPDATE privilege on mission_id itself (the conflict
+-- target), not just the 3 client-owned columns. A plain insert-then-
+-- update (like the tests above) never exercises this path, so it
+-- shipped without a grant on mission_id until this was caught live.
+select lives_ok(
+  format(
+    $$insert into public.mission_vehicle_checklists (mission_id, consent_signed_at, insurance_confirmed, client_signature_at)
+      values (%L, now(), true, now())
+      on conflict (mission_id) do update set
+        consent_signed_at = excluded.consent_signed_at,
+        insurance_confirmed = excluded.insurance_confirmed,
+        client_signature_at = excluded.client_signature_at$$,
+    :'vehicle_mission_id'::text
+  ),
+  'the client upsert path (INSERT ... ON CONFLICT DO UPDATE, what PostgREST actually generates) does not hit a permission error (20260804100001)'
 );
 
 -- 19-20: isolation
