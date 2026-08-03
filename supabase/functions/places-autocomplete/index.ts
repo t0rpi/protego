@@ -1,13 +1,20 @@
-// M7 QA fix — proxies Google Places Autocomplete so the mobile app never
-// holds the real Google Maps API key (same server-only trust boundary as
-// Stripe: see _shared/clients.ts's getGoogleMapsApiKey()). Requires a
-// valid Protego session so an unauthenticated caller can't hammer our
-// Google Cloud billing through this function.
+// M7 QA fix — proxies Google Places Autocomplete (New) so the mobile app
+// never holds the real Google Maps API key (same server-only trust
+// boundary as Stripe: see _shared/clients.ts's getGoogleMapsApiKey()).
+// Requires a valid Protego session so an unauthenticated caller can't
+// hammer our Google Cloud billing through this function.
+//
+// Uses Places API (New) (POST places:autocomplete), not the legacy GET
+// /maps/api/place/autocomplete/json endpoint — the founder's Google
+// Cloud key is restricted to "Places API (New)" + Routes + Geocoding
+// only, so the legacy endpoint would be rejected outright.
 import { corsHeaders, getCallerUserId, getGoogleMapsApiKey, jsonResponse } from "../_shared/clients.ts";
 
-interface GooglePrediction {
-  place_id: string;
-  description: string;
+interface PlacePredictionNew {
+  placePrediction?: {
+    placeId: string;
+    text?: { text?: string };
+  };
 }
 
 Deno.serve(async (req) => {
@@ -24,29 +31,35 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = getGoogleMapsApiKey();
-    const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
-    url.searchParams.set("input", input);
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("language", "ro");
-    // Pilot scope is Oradea/Romania only (CLAUDE.md/MASTERPROMPT: Oradea
-    // is the confirmed pilot city) — restricting results keeps
-    // suggestions relevant and Places usage cheaper.
-    url.searchParams.set("components", "country:ro");
-    if (typeof sessiontoken === "string") {
-      url.searchParams.set("sessiontoken", sessiontoken);
-    }
 
-    const res = await fetch(url);
+    const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+      },
+      body: JSON.stringify({
+        input,
+        languageCode: "ro",
+        // Pilot scope is Oradea/Romania only (CLAUDE.md/MASTERPROMPT:
+        // Oradea is the confirmed pilot city) — restricting results
+        // keeps suggestions relevant and Places usage cheaper.
+        includedRegionCodes: ["ro"],
+        ...(typeof sessiontoken === "string" ? { sessionToken: sessiontoken } : {}),
+      }),
+    });
     const data = await res.json();
 
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      return jsonResponse({ error: `Places API error: ${data.status}` }, 502);
+    if (!res.ok) {
+      return jsonResponse({ error: `Places API error: ${data.error?.message ?? res.status}` }, 502);
     }
 
-    const predictions = ((data.predictions ?? []) as GooglePrediction[]).map((p) => ({
-      place_id: p.place_id,
-      description: p.description,
-    }));
+    const predictions = ((data.suggestions ?? []) as PlacePredictionNew[])
+      .filter((s) => s.placePrediction?.placeId)
+      .map((s) => ({
+        place_id: s.placePrediction!.placeId,
+        description: s.placePrediction!.text?.text ?? "",
+      }));
 
     return jsonResponse({ predictions });
   } catch (error) {

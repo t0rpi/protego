@@ -1,7 +1,11 @@
-// M7 QA fix — proxies Google Directions to compute a route distance from
-// two Places place_ids (Directions accepts "place_id:XXX" directly as
-// origin/destination, so no separate Place Details call is needed).
-// Same server-only key trust boundary as places-autocomplete.
+// M7 QA fix — proxies Google Routes API (computeRoutes) to get a route
+// distance from two Places place_ids. Routes API accepts a placeId
+// waypoint directly, so no separate Geocoding/Place Details call is
+// needed. Same server-only key trust boundary as places-autocomplete.
+//
+// Uses Routes API (POST directions/v2:computeRoutes), not the legacy
+// GET /maps/api/directions/json endpoint — the founder's Google Cloud
+// key is restricted to Places (New) + Routes + Geocoding only.
 import { corsHeaders, getCallerUserId, getGoogleMapsApiKey, jsonResponse } from "../_shared/clients.ts";
 
 Deno.serve(async (req) => {
@@ -18,22 +22,32 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = getGoogleMapsApiKey();
-    const url = new URL("https://maps.googleapis.com/maps/api/directions/json");
-    url.searchParams.set("origin", `place_id:${origin_place_id}`);
-    url.searchParams.set("destination", `place_id:${destination_place_id}`);
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("language", "ro");
 
-    const res = await fetch(url);
+    const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        // Routes API returns no fields at all without an explicit field
+        // mask (cost-control default) — this is the one well-known
+        // gotcha with this endpoint.
+        "X-Goog-FieldMask": "routes.distanceMeters",
+      },
+      body: JSON.stringify({
+        origin: { placeId: origin_place_id },
+        destination: { placeId: destination_place_id },
+        travelMode: "DRIVE",
+      }),
+    });
     const data = await res.json();
 
-    if (data.status !== "OK" || !data.routes?.length) {
-      return jsonResponse({ error: `Directions API error: ${data.status}` }, 502);
+    if (!res.ok) {
+      return jsonResponse({ error: `Routes API error: ${data.error?.message ?? res.status}` }, 502);
     }
 
-    const meters = data.routes[0]?.legs?.[0]?.distance?.value;
+    const meters = data.routes?.[0]?.distanceMeters;
     if (typeof meters !== "number") {
-      return jsonResponse({ error: "Directions API returned no distance" }, 502);
+      return jsonResponse({ error: "Routes API returned no distance" }, 502);
     }
 
     const distanceKm = Math.round((meters / 1000) * 10) / 10;
