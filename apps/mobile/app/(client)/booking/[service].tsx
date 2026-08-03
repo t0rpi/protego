@@ -56,9 +56,14 @@ const QUOTE_LINE_KEYS: Record<string, string> = {
 function formatQuoteLineLabel(
   label: string,
   t: (key: string, options?: Record<string, unknown>) => string,
-  distanceKm: string
+  distanceKm: string,
+  agentCount: number,
+  hours: number
 ): string {
   const key = QUOTE_LINE_KEYS[label];
+  if (label === "agent") {
+    return t(key, { agents: agentCount, hours });
+  }
   const base = key ? t(key) : label;
   if ((label === "distance" || label === "distance_estimated") && distanceKm) {
     return `${base} ${t("quote.distanceKmSuffix", { km: distanceKm })}`;
@@ -126,9 +131,12 @@ export default function BookingWizardScreen() {
 
   // step: mobility — Protect Ride is Uber-style (always the Protego
   // vehicle, no client choice, founder decision); Escort/Hourly keep
-  // all 3 options and the mobility step itself.
-  const [mobility, setMobility] = useState<Mobility>(
-    serviceKey === "protect_ride" ? "protego_vehicle" : "on_foot"
+  // all 3 options and the mobility step itself. No preselection for
+  // Escort/Hourly (founder decision, 2026-08-03): mobility changes the
+  // price, so the client must actively choose — "nothing ambiguous
+  // advances", same principle as the mandatory address confirmation.
+  const [mobility, setMobility] = useState<Mobility | null>(
+    serviceKey === "protect_ride" ? "protego_vehicle" : null
   );
   const [vehicleConsent, setVehicleConsent] = useState(false);
   const [vehicleInsurance, setVehicleInsurance] = useState(false);
@@ -242,12 +250,13 @@ export default function BookingWizardScreen() {
   // ("nothing ambiguous advances") must never proceed past this step.
   const canContinueWhere = Boolean(pickupPlaceId) && (!isRide || Boolean(destinationPlaceId));
 
-  // Same "nothing ambiguous advances" principle: a client_vehicle
-  // mission cannot proceed without all 3 legal/safety conditions
-  // checked (consent, insurance, signature) — the wizard previously let
-  // this through unchecked.
+  // Same "nothing ambiguous advances" principle: Escort/Hourly must
+  // actively choose a mobility option (no preselection — it changes the
+  // price, founder decision 2026-08-03), and a client_vehicle mission
+  // additionally cannot proceed without all 3 legal/safety conditions
+  // checked (consent, insurance, signature).
   const canContinueMobility =
-    mobility !== "client_vehicle" || (vehicleConsent && vehicleInsurance && vehicleSignature);
+    mobility !== null && (mobility !== "client_vehicle" || (vehicleConsent && vehicleInsurance && vehicleSignature));
 
   /** null = "acum" (missions.scheduled_at's own convention — see that column's comment). */
   function resolveScheduledAt(): { value: string | null; error: string | null } {
@@ -288,7 +297,9 @@ export default function BookingWizardScreen() {
         agent_count: agentCount,
         agent_preference: agentPreference,
         dress_code: dressCode,
-        mobility,
+        // canContinueMobility already guarantees mobility is set by the
+        // time this runs; the fallback is unreachable defense in depth.
+        mobility: mobility ?? "on_foot",
         context_threat_known: hasKnownThreat,
         context_kind: contextKind,
         context_details: contextDetails || null,
@@ -574,13 +585,17 @@ export default function BookingWizardScreen() {
             </View>
             <Text style={s.label}>{t("booking.preference")}</Text>
             <View style={s.row}>
-              {(["male", "female", "any"] as const).map((pref) => (
+              {/* "female" removed from the pilot UI (founder decision,
+                  2026-08-03): only 1 female agent, availability can't be
+                  promised. Stays in the data model/enum — comes back as
+                  a real, honored preference with Drum Sigur in Wave 2. */}
+              {(["male", "any"] as const).map((pref) => (
                 <Pressable
                   key={pref}
                   style={[s.chip, agentPreference === pref && s.chipSelected]}
                   onPress={() => setAgentPreference(pref)}
                 >
-                  <Text style={s.chipText}>{t(`booking.pref${pref === "any" ? "Any" : pref === "female" ? "Female" : "Male"}`)}</Text>
+                  <Text style={s.chipText}>{t(`booking.pref${pref === "any" ? "Any" : "Male"}`)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -692,7 +707,9 @@ export default function BookingWizardScreen() {
               </View>
             )}
 
-            {mobility === "client_vehicle" && !canContinueMobility ? (
+            {mobility === null ? (
+              <Text style={s.note}>{t("booking.chooseMobilityHint")}</Text>
+            ) : mobility === "client_vehicle" && !canContinueMobility ? (
               <Text style={s.note}>{t("booking.confirmVehicleHint")}</Text>
             ) : null}
             <Pressable
@@ -764,7 +781,9 @@ export default function BookingWizardScreen() {
             <Text style={s.note}>{t("quote.estimateNote")}</Text>
             {quoteLines.map((line, index) => (
               <View style={s.quoteLine} key={`${line.label}-${index}`}>
-                <Text style={s.quoteLineLabel}>{formatQuoteLineLabel(line.label, t, distanceKm)}</Text>
+                <Text style={s.quoteLineLabel}>
+                  {formatQuoteLineLabel(line.label, t, distanceKm, agentCount, durationHours)}
+                </Text>
                 <Text style={s.quoteLineAmount}>{line.amount} lei</Text>
               </View>
             ))}
