@@ -20,6 +20,14 @@
           "merchantIdentifier": "merchant.ro.protego",
           "enableGooglePay": false
         }
+      ],
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PROTEGO are nevoie de acces la galerie pentru fotografiile vehiculului.",
+          "cameraPermission": "PROTEGO are nevoie de acces la cameră pentru fotografiile vehiculului."
+        }
       ]
     ],
     "experiments": {

@@ -2,15 +2,27 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { supabase } from "./supabase";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Founder QA (2026-08-04): this runs unconditionally at module scope
+// (imported from auth-context.tsx, mounted at the root layout), so a
+// broken/missing native notifications module on a given build must
+// never crash the whole app before anything renders -- same defense
+// pattern as lib/stripe-key-guard.tsx. Root cause of one real crash:
+// expo-notifications was never registered in app.json's plugins array,
+// so the installed dev-client build's native side wasn't configured
+// for it (fixed there too, but this guard stays regardless).
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch {
+  // No notification handler this session is not a reason to crash the app.
+}
 
 /**
  * Real Expo push registration (not a stub — the SMS fallback is the
