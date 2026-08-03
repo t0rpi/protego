@@ -401,6 +401,7 @@ export default function BookingWizardScreen() {
               <Text style={s.label}>{t("booking.pickupPh")}</Text>
               <PlaceAutocompleteInput
                 value={pickupAddress}
+                isConfirmed={Boolean(pickupPlaceId)}
                 onChangeText={(text) => {
                   setPickupAddress(text);
                   setPickupPlaceId(null);
@@ -417,6 +418,7 @@ export default function BookingWizardScreen() {
                   <Text style={s.label}>{t("booking.destPh")}</Text>
                   <PlaceAutocompleteInput
                     value={destinationAddress}
+                    isConfirmed={Boolean(destinationPlaceId)}
                     onChangeText={(text) => {
                       setDestinationAddress(text);
                       setDestinationPlaceId(null);

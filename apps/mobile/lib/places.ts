@@ -23,6 +23,28 @@ export async function autocompletePlaces(
   return data.predictions ?? [];
 }
 
+export interface GeocodeResult {
+  formatted_address: string;
+  place_id: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Founder decision (2026-08-03): a free-typed address must be shown
+ * back to the client as Google's normalized formatted_address for
+ * confirmation before it's treated as the real pickup/destination —
+ * "unirii 10" is genuinely ambiguous (Piata Unirii vs Strada Unirii),
+ * and the confirmed address is what the agent gets dispatched to.
+ */
+export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
+  const { data, error } = await supabase.functions.invoke("geocode-address", {
+    body: { address },
+  });
+  if (error) throw error;
+  return data.result ?? null;
+}
+
 /**
  * Prefers a selected suggestion's place_id for each endpoint when
  * available; falls back to geocoding the raw typed text server-side
