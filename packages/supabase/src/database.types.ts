@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       agent_documents: {
@@ -621,6 +646,7 @@ export type Database = {
       }
       missions: {
         Row: {
+          accompany_inside_requested: boolean
           agent_count: number
           agent_preference: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
@@ -646,8 +672,10 @@ export type Database = {
           status: Database["public"]["Enums"]["mission_status"]
           updated_at: string
           verification_code: string | null
+          wait_at_destination_minutes: number | null
         }
         Insert: {
+          accompany_inside_requested?: boolean
           agent_count?: number
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
@@ -673,8 +701,10 @@ export type Database = {
           status?: Database["public"]["Enums"]["mission_status"]
           updated_at?: string
           verification_code?: string | null
+          wait_at_destination_minutes?: number | null
         }
         Update: {
+          accompany_inside_requested?: boolean
           agent_count?: number
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city?: string
@@ -700,6 +730,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["mission_status"]
           updated_at?: string
           verification_code?: string | null
+          wait_at_destination_minutes?: number | null
         }
         Relationships: [
           {
@@ -973,6 +1004,8 @@ export type Database = {
       }
       pricing_config: {
         Row: {
+          accompany_inside_fee: number | null
+          accompany_inside_hourly_threshold_minutes: number
           agent_minimum_per_mission: number | null
           agent_share_pct: number
           base: number
@@ -984,8 +1017,10 @@ export type Database = {
           coef_urgent: number
           coef_weekend: number
           created_at: string
+          default_distance_km: number | null
           degressive_rate: number
           degressive_threshold_hours: number | null
+          door_to_door_included: boolean
           free_cancel_minutes: number
           id: string
           min_billing_hours: number
@@ -997,8 +1032,12 @@ export type Database = {
           service_id: string
           updated_at: string
           vat_rate: number
+          wait_free_minutes: number
+          wait_per_minute_rate: number | null
         }
         Insert: {
+          accompany_inside_fee?: number | null
+          accompany_inside_hourly_threshold_minutes?: number
           agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
@@ -1010,8 +1049,10 @@ export type Database = {
           coef_urgent?: number
           coef_weekend?: number
           created_at?: string
+          default_distance_km?: number | null
           degressive_rate?: number
           degressive_threshold_hours?: number | null
+          door_to_door_included?: boolean
           free_cancel_minutes?: number
           id?: string
           min_billing_hours?: number
@@ -1023,8 +1064,12 @@ export type Database = {
           service_id: string
           updated_at?: string
           vat_rate?: number
+          wait_free_minutes?: number
+          wait_per_minute_rate?: number | null
         }
         Update: {
+          accompany_inside_fee?: number | null
+          accompany_inside_hourly_threshold_minutes?: number
           agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
@@ -1036,8 +1081,10 @@ export type Database = {
           coef_urgent?: number
           coef_weekend?: number
           created_at?: string
+          default_distance_km?: number | null
           degressive_rate?: number
           degressive_threshold_hours?: number | null
+          door_to_door_included?: boolean
           free_cancel_minutes?: number
           id?: string
           min_billing_hours?: number
@@ -1049,6 +1096,8 @@ export type Database = {
           service_id?: string
           updated_at?: string
           vat_rate?: number
+          wait_free_minutes?: number
+          wait_per_minute_rate?: number | null
         }
         Relationships: [
           {
@@ -1780,6 +1829,7 @@ export type Database = {
       }
       compute_quote: {
         Args: {
+          p_accompany_inside?: boolean
           p_agent_count: number
           p_city: string
           p_hours: number
@@ -1788,6 +1838,7 @@ export type Database = {
           p_night?: boolean
           p_service_key: string
           p_urgent?: boolean
+          p_wait_minutes?: number
           p_weekend?: boolean
         }
         Returns: Json
@@ -2119,6 +2170,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       agent_document_status: ["valid", "expiring", "expired"],

@@ -73,7 +73,26 @@ export function computeQuote(input: QuoteInput, config: PricingConfig): Quote {
       lines.push({ label: "distance_estimated", amount: distanceCost });
     }
 
-    laborComponent = baseCost + distanceCost;
+    // Last-mile add-ons (2026-08-03 founder decision).
+    let waitCost = 0;
+    let accompanyCost = 0;
+
+    if (config.doorToDoorIncluded) {
+      lines.push({ label: "door_to_door_included", amount: 0 });
+    }
+
+    if (input.waitMinutes && input.waitMinutes > 0) {
+      const billableMinutes = Math.max(0, input.waitMinutes - config.waitFreeMinutes);
+      waitCost = round2(billableMinutes * (config.waitPerMinuteRate ?? 0));
+      lines.push({ label: "wait_at_destination", amount: waitCost });
+    }
+
+    if (input.accompanyInside) {
+      accompanyCost = config.accompanyInsideFee ?? 0;
+      lines.push({ label: "accompany_inside", amount: accompanyCost });
+    }
+
+    laborComponent = baseCost + distanceCost + waitCost + accompanyCost;
 
     if (config.minimumTotal !== null && laborComponent < config.minimumTotal) {
       const adjustment = round2(config.minimumTotal - laborComponent);

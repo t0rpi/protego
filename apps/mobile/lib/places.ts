@@ -23,12 +23,27 @@ export async function autocompletePlaces(
   return data.predictions ?? [];
 }
 
-export async function computeRouteDistanceKm(
-  originPlaceId: string,
-  destinationPlaceId: string
-): Promise<number> {
+/**
+ * Prefers a selected suggestion's place_id for each endpoint when
+ * available; falls back to geocoding the raw typed text server-side
+ * otherwise. This matters — most real bookings never tap a suggestion
+ * for both fields, and requiring place_ids for both silently produced
+ * the same default-estimate quote for every address (founder QA
+ * finding, 2026-08-03).
+ */
+export async function computeRouteDistanceKm(params: {
+  originPlaceId?: string | null;
+  destinationPlaceId?: string | null;
+  originAddress?: string;
+  destinationAddress?: string;
+}): Promise<number> {
   const { data, error } = await supabase.functions.invoke("route-distance", {
-    body: { origin_place_id: originPlaceId, destination_place_id: destinationPlaceId },
+    body: {
+      origin_place_id: params.originPlaceId ?? undefined,
+      destination_place_id: params.destinationPlaceId ?? undefined,
+      origin_address: params.originAddress,
+      destination_address: params.destinationAddress,
+    },
   });
   if (error) throw error;
   return data.distance_km;

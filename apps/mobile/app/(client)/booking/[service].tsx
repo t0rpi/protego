@@ -30,6 +30,42 @@ const MIN_DURATION: Record<ServiceKey, number> = {
   hourly: 2,
 };
 
+const QUOTE_LINE_KEYS: Record<string, string> = {
+  base: "quote.lineBase",
+  distance: "quote.lineDistance",
+  distance_estimated: "quote.lineDistanceEstimated",
+  minimum_adjustment: "quote.lineMinimumAdjustment",
+  agent: "quote.lineAgent",
+  vehicle: "quote.lineVehicle",
+  client_vehicle: "quote.lineClientVeh",
+  platform_fee: "quote.linePlatform",
+  vat: "quote.lineVat",
+  overage: "quote.lineOverage",
+  door_to_door_included: "quote.lineDoorToDoor",
+  wait_at_destination: "quote.lineWait",
+  accompany_inside: "quote.lineAccompany",
+};
+
+/**
+ * compute_quote() returns raw internal labels (see supabase/migrations/
+ * 20260803100003_compute_quote_last_mile.sql) — translates them to
+ * user-facing copy, and appends the actual computed km for the two
+ * distance labels (founder QA: the breakdown needs to visibly show the
+ * km driving the price, not just an opaque amount).
+ */
+function formatQuoteLineLabel(
+  label: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  distanceKm: string
+): string {
+  const key = QUOTE_LINE_KEYS[label];
+  const base = key ? t(key) : label;
+  if ((label === "distance" || label === "distance_estimated") && distanceKm) {
+    return `${base} ${t("quote.distanceKmSuffix", { km: distanceKm })}`;
+  }
+  return base;
+}
+
 /**
  * The MVP paid-service booking flow (MASTERPROMPT §5A's 10 steps,
  * collapsed into one wizard screen rather than 8 separate routes — a
@@ -88,11 +124,22 @@ export default function BookingWizardScreen() {
   const [agentPreference, setAgentPreference] = useState<AgentPreference>("any");
   const [dressCode, setDressCode] = useState<DressCode>("casual");
 
-  // step: mobility
-  const [mobility, setMobility] = useState<Mobility>("on_foot");
+  // step: mobility — Protect Ride is Uber-style (always the Protego
+  // vehicle, no client choice, founder decision); Escort/Hourly keep
+  // all 3 options and the mobility step itself.
+  const [mobility, setMobility] = useState<Mobility>(
+    serviceKey === "protect_ride" ? "protego_vehicle" : "on_foot"
+  );
   const [vehicleConsent, setVehicleConsent] = useState(false);
   const [vehicleInsurance, setVehicleInsurance] = useState(false);
   const [vehicleSignature, setVehicleSignature] = useState(false);
+
+  // step: mobility (protect_ride variant — last-mile add-ons, founder
+  // decision: door-to-door is always included, wait/accompany are paid
+  // opt-ins reflected as separate quote lines).
+  const [waitAtDestination, setWaitAtDestination] = useState(false);
+  const [waitMinutes, setWaitMinutes] = useState(10);
+  const [accompanyInside, setAccompanyInside] = useState(false);
 
   // step: context
   const [hasKnownThreat, setHasKnownThreat] = useState(false);
@@ -136,28 +183,47 @@ export default function BookingWizardScreen() {
 
   const isRideForDistance = serviceKey === "protect_ride";
   useEffect(() => {
-    if (!isRideForDistance || !pickupPlaceId || !destinationPlaceId) return;
+    if (!isRideForDistance) return;
+    const hasPlaceIds = Boolean(pickupPlaceId && destinationPlaceId);
+    const hasAddressText = pickupAddress.trim().length >= 5 && destinationAddress.trim().length >= 5;
+    if (!hasPlaceIds && !hasAddressText) return;
+
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDistanceLoading(true);
-    setDistanceError(null);
-    computeRouteDistanceKm(pickupPlaceId, destinationPlaceId)
-      .then((km) => {
-        if (!cancelled) setDistanceKm(String(km));
+    // A deliberate suggestion tap fires immediately; free-typed text
+    // (never selected from the dropdown — the common case, founder QA
+    // finding 2026-08-03) is debounced since it changes on every
+    // keystroke. Without this fallback, distance never computed unless
+    // both fields were tapped from the autocomplete list, so the quote
+    // silently used the same default estimate regardless of address.
+    const delay = hasPlaceIds ? 0 : 600;
+    const timer = setTimeout(() => {
+      setDistanceLoading(true);
+      setDistanceError(null);
+      computeRouteDistanceKm({
+        originPlaceId: pickupPlaceId,
+        destinationPlaceId: destinationPlaceId,
+        originAddress: pickupAddress,
+        destinationAddress: destinationAddress,
       })
-      .catch((err) => {
-        // Leave distanceKm empty on failure — compute_quote()'s
-        // default_distance_km fallback covers this, per the founder's
-        // explicit instruction that it stays only as a safety net.
-        if (!cancelled) setDistanceError(err instanceof Error ? err.message : "route lookup failed");
-      })
-      .finally(() => {
-        if (!cancelled) setDistanceLoading(false);
-      });
+        .then((km) => {
+          if (!cancelled) setDistanceKm(String(km));
+        })
+        .catch((err) => {
+          // Leave distanceKm empty on failure — compute_quote()'s
+          // default_distance_km fallback covers this, per the founder's
+          // explicit instruction that it stays only as a safety net.
+          if (!cancelled) setDistanceError(err instanceof Error ? err.message : "route lookup failed");
+        })
+        .finally(() => {
+          if (!cancelled) setDistanceLoading(false);
+        });
+    }, delay);
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [isRideForDistance, pickupPlaceId, destinationPlaceId]);
+  }, [isRideForDistance, pickupPlaceId, destinationPlaceId, pickupAddress, destinationAddress]);
 
   useEffect(() => {
     if (!session) return;
@@ -213,6 +279,8 @@ export default function BookingWizardScreen() {
         context_threat_known: hasKnownThreat,
         context_kind: contextKind,
         context_details: contextDetails || null,
+        wait_at_destination_minutes: isRide && waitAtDestination ? waitMinutes : null,
+        accompany_inside_requested: isRide ? accompanyInside : false,
       })
       .eq("id", missionId);
 
@@ -486,7 +554,7 @@ export default function BookingWizardScreen() {
             </View>
             <Text style={s.label}>{t("booking.preference")}</Text>
             <View style={s.row}>
-              {(["any", "female", "male"] as const).map((pref) => (
+              {(["male", "female", "any"] as const).map((pref) => (
                 <Pressable
                   key={pref}
                   style={[s.chip, agentPreference === pref && s.chipSelected]}
@@ -520,7 +588,53 @@ export default function BookingWizardScreen() {
           </>
         )}
 
-        {step === "mobility" && (
+        {step === "mobility" && serviceKey === "protect_ride" && (
+          <>
+            <Text style={s.title}>{t("booking.lastMileTitle")}</Text>
+
+            <View style={s.card}>
+              <Text style={s.cardTitle}>{t("booking.doorToDoorTitle")}</Text>
+              <Text style={s.cardDesc}>{t("booking.doorToDoorDesc")}</Text>
+            </View>
+
+            <Pressable
+              style={[s.card, waitAtDestination && s.cardSelected]}
+              onPress={() => setWaitAtDestination((v) => !v)}
+            >
+              <Text style={s.cardTitle}>
+                {waitAtDestination ? "☑" : "☐"} {t("booking.waitTitle")}
+              </Text>
+              <Text style={s.cardDesc}>{t("booking.waitDesc")}</Text>
+            </Pressable>
+            {waitAtDestination ? (
+              <View style={s.row}>
+                <Pressable style={s.chip} onPress={() => setWaitMinutes((m) => Math.max(0, m - 5))}>
+                  <Text style={s.chipText}>-</Text>
+                </Pressable>
+                <Text style={s.chipText}>{waitMinutes} min</Text>
+                <Pressable style={s.chip} onPress={() => setWaitMinutes((m) => m + 5)}>
+                  <Text style={s.chipText}>+</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <Pressable
+              style={[s.card, accompanyInside && s.cardSelected]}
+              onPress={() => setAccompanyInside((v) => !v)}
+            >
+              <Text style={s.cardTitle}>
+                {accompanyInside ? "☑" : "☐"} {t("booking.accompanyTitle")}
+              </Text>
+              <Text style={s.cardDesc}>{t("booking.accompanyDesc")}</Text>
+            </Pressable>
+
+            <Pressable style={s.button} onPress={() => setStep("context")}>
+              <Text style={s.buttonText}>{t("common.continue")}</Text>
+            </Pressable>
+          </>
+        )}
+
+        {step === "mobility" && serviceKey !== "protect_ride" && (
           <>
             <Text style={s.title}>{t("booking.mobilityTitle")}</Text>
             <Pressable
@@ -623,7 +737,7 @@ export default function BookingWizardScreen() {
             <Text style={s.note}>{t("quote.estimateNote")}</Text>
             {quoteLines.map((line, index) => (
               <View style={s.quoteLine} key={`${line.label}-${index}`}>
-                <Text style={s.quoteLineLabel}>{line.label}</Text>
+                <Text style={s.quoteLineLabel}>{formatQuoteLineLabel(line.label, t, distanceKm)}</Text>
                 <Text style={s.quoteLineAmount}>{line.amount} lei</Text>
               </View>
             ))}

@@ -23,6 +23,11 @@ const baseConfig: PricingConfig = {
   freeCancelMinutes: 60,
   minimumTotal: null,
   defaultDistanceKm: null,
+  doorToDoorIncluded: false,
+  waitFreeMinutes: 5,
+  waitPerMinuteRate: null,
+  accompanyInsideFee: null,
+  accompanyInsideHourlyThresholdMinutes: 30,
   agentMinimumPerMission: null,
   cancellationFeePct: 0.3,
   cancellationFeeMinimum: 30,
@@ -176,6 +181,70 @@ describe("computeQuote — Protect Ride (flat + per-km, vehicle bundled)", () =>
     expect(quote.lines.find((l) => l.label === "distance")).toBeUndefined();
     expect(quote.lines.find((l) => l.label === "distance_estimated")).toBeUndefined();
     expect(quote.laborComponent).toBe(30);
+  });
+
+  it("shows door-to-door as an included (0 lei) line when configured", () => {
+    const config = { ...baseConfig, doorToDoorIncluded: true };
+    const quote = computeQuote(
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, km: 15, mobility: "protego_vehicle" },
+      config
+    );
+    expect(quote.lines.find((l) => l.label === "door_to_door_included")).toEqual({
+      label: "door_to_door_included",
+      amount: 0,
+    });
+    expect(quote.laborComponent).toBe(105); // door-to-door adds no cost
+  });
+
+  it("charges wait_at_destination only past the free minutes", () => {
+    const config = { ...baseConfig, waitFreeMinutes: 5, waitPerMinuteRate: 2 };
+    const quote = computeQuote(
+      {
+        serviceKey: "protect_ride",
+        agentCount: 1,
+        hours: 0,
+        km: 15,
+        mobility: "protego_vehicle",
+        waitMinutes: 20,
+      },
+      config
+    );
+    // 20 - 5 free = 15 billable * 2 lei = 30
+    expect(quote.lines.find((l) => l.label === "wait_at_destination")?.amount).toBe(30);
+    expect(quote.laborComponent).toBe(105 + 30);
+  });
+
+  it("does not add a wait_at_destination line when within the free window", () => {
+    const config = { ...baseConfig, waitFreeMinutes: 5, waitPerMinuteRate: 2 };
+    const quote = computeQuote(
+      {
+        serviceKey: "protect_ride",
+        agentCount: 1,
+        hours: 0,
+        km: 15,
+        mobility: "protego_vehicle",
+        waitMinutes: 3,
+      },
+      config
+    );
+    expect(quote.lines.find((l) => l.label === "wait_at_destination")?.amount).toBe(0);
+  });
+
+  it("charges the flat accompany_inside fee when requested", () => {
+    const config = { ...baseConfig, accompanyInsideFee: 25 };
+    const quote = computeQuote(
+      {
+        serviceKey: "protect_ride",
+        agentCount: 1,
+        hours: 0,
+        km: 15,
+        mobility: "protego_vehicle",
+        accompanyInside: true,
+      },
+      config
+    );
+    expect(quote.lines.find((l) => l.label === "accompany_inside")?.amount).toBe(25);
+    expect(quote.laborComponent).toBe(105 + 25);
   });
 });
 

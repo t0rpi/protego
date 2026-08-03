@@ -1,12 +1,35 @@
 // M7 QA fix — proxies Google Routes API (computeRoutes) to get a route
-// distance from two Places place_ids. Routes API accepts a placeId
-// waypoint directly, so no separate Geocoding/Place Details call is
-// needed. Same server-only key trust boundary as places-autocomplete.
-//
-// Uses Routes API (POST directions/v2:computeRoutes), not the legacy
-// GET /maps/api/directions/json endpoint — the founder's Google Cloud
-// key is restricted to Places (New) + Routes + Geocoding only.
+// distance. Accepts EITHER place_ids (client selected an autocomplete
+// suggestion) OR free-text addresses (client just typed and never
+// tapped a suggestion) -- geocoding the text via the Geocoding API when
+// no place_id is available. This matters: requiring a selected
+// suggestion for both fields meant most real typed-address bookings
+// silently never computed a real distance at all, always falling back
+// to the disclosed default estimate regardless of what was typed
+// (founder QA finding, 2026-08-03). Same server-only key trust
+// boundary as places-autocomplete.
 import { corsHeaders, getCallerUserId, getGoogleMapsApiKey, jsonResponse } from "../_shared/clients.ts";
+
+interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+async function geocode(address: string, apiKey: string): Promise<LatLng> {
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", address);
+  url.searchParams.set("region", "ro");
+  url.searchParams.set("key", apiKey);
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.status !== "OK" || !data.results?.length) {
+    throw new Error(`could not geocode address (${data.status})`);
+  }
+  const location = data.results[0].geometry.location;
+  return { lat: location.lat, lng: location.lng };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,12 +39,25 @@ Deno.serve(async (req) => {
   try {
     await getCallerUserId(req);
 
-    const { origin_place_id, destination_place_id } = await req.json();
-    if (typeof origin_place_id !== "string" || typeof destination_place_id !== "string") {
-      return jsonResponse({ error: "origin_place_id and destination_place_id are required" }, 400);
-    }
+    const { origin_place_id, destination_place_id, origin_address, destination_address } = await req.json();
 
     const apiKey = getGoogleMapsApiKey();
+
+    async function resolveWaypoint(placeId: unknown, address: unknown): Promise<Record<string, unknown>> {
+      if (typeof placeId === "string" && placeId) {
+        return { placeId };
+      }
+      if (typeof address === "string" && address.trim().length > 0) {
+        const latLng = await geocode(address, apiKey);
+        return { location: { latLng: { latitude: latLng.lat, longitude: latLng.lng } } };
+      }
+      throw new Error("each endpoint needs either a place_id or an address");
+    }
+
+    const [origin, destination] = await Promise.all([
+      resolveWaypoint(origin_place_id, origin_address),
+      resolveWaypoint(destination_place_id, destination_address),
+    ]);
 
     const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
       method: "POST",
@@ -33,11 +69,7 @@ Deno.serve(async (req) => {
         // gotcha with this endpoint.
         "X-Goog-FieldMask": "routes.distanceMeters",
       },
-      body: JSON.stringify({
-        origin: { placeId: origin_place_id },
-        destination: { placeId: destination_place_id },
-        travelMode: "DRIVE",
-      }),
+      body: JSON.stringify({ origin, destination, travelMode: "DRIVE" }),
     });
     const data = await res.json();
 

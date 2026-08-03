@@ -25,6 +25,13 @@ export interface PricingConfig {
   minimumTotal: number | null;
   /** M7 QA stopgap — disclosed placeholder distance used when the client leaves km blank (real geocoding not built yet). Protect Ride only; null elsewhere. */
   defaultDistanceKm: number | null;
+  /** 2026-08-03 founder decision — Protect Ride last-mile add-ons, all disclosed placeholders. Protect Ride only; unused elsewhere. */
+  doorToDoorIncluded: boolean;
+  waitFreeMinutes: number;
+  waitPerMinuteRate: number | null;
+  accompanyInsideFee: number | null;
+  /** Documents the flat-fee -> hourly-rate conversion rule past this many minutes; runtime enforcement (tracking actual accompany duration mid-mission) isn't built, only affects the booking-time quote today. */
+  accompanyInsideHourlyThresholdMinutes: number;
   /** v2.3 §23 — floor on the agent's computed earnings. Confirmed for Protect Ride (35 lei) only; null elsewhere — not invented for Escort/Hourly. */
   agentMinimumPerMission: number | null;
   /** v2.3 §22 */
@@ -46,6 +53,10 @@ export interface QuoteInput {
   isNight?: boolean;
   isWeekend?: boolean;
   isUrgent?: boolean;
+  /** Protect Ride only — estimated wait time at the destination, in minutes. */
+  waitMinutes?: number;
+  /** Protect Ride only — client opted in to the agent accompanying them inside the venue. */
+  accompanyInside?: boolean;
 }
 
 export interface QuoteLine {
@@ -59,7 +70,10 @@ export interface QuoteLine {
     | "client_vehicle"
     | "platform_fee"
     | "vat"
-    | "overage";
+    | "overage"
+    | "door_to_door_included"
+    | "wait_at_destination"
+    | "accompany_inside";
   amount: number;
 }
 
