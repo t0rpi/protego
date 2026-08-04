@@ -522,6 +522,63 @@ export type Database = {
           },
         ]
       }
+      mission_segments: {
+        Row: {
+          consumed_wait_billable_minutes: number
+          consumed_wait_minutes: number
+          created_at: string
+          destination_address: string
+          distance_km: number
+          id: string
+          incremental_cost: number
+          mission_id: string
+          previous_destination_address: string
+          quote_id: string
+          segment_number: number
+        }
+        Insert: {
+          consumed_wait_billable_minutes: number
+          consumed_wait_minutes: number
+          created_at?: string
+          destination_address: string
+          distance_km: number
+          id?: string
+          incremental_cost: number
+          mission_id: string
+          previous_destination_address: string
+          quote_id: string
+          segment_number: number
+        }
+        Update: {
+          consumed_wait_billable_minutes?: number
+          consumed_wait_minutes?: number
+          created_at?: string
+          destination_address?: string
+          distance_km?: number
+          id?: string
+          incremental_cost?: number
+          mission_id?: string
+          previous_destination_address?: string
+          quote_id?: string
+          segment_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_segments_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_segments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_share_links: {
         Row: {
           created_at: string
@@ -1855,6 +1912,17 @@ export type Database = {
         }
         Returns: Json
       }
+      compute_segment_quote: {
+        Args: {
+          p_city: string
+          p_consumed_wait_minutes: number
+          p_new_km: number
+          p_night?: boolean
+          p_urgent?: boolean
+          p_weekend?: boolean
+        }
+        Returns: Json
+      }
       confirm_mission_after_payment: {
         Args: { p_mission_id: string }
         Returns: undefined
@@ -1948,6 +2016,15 @@ export type Database = {
         Args: { p_additional_hours: number; p_mission_id: string }
         Returns: Json
       }
+      request_mission_segment: {
+        Args: {
+          p_consumed_wait_minutes: number
+          p_mission_id: string
+          p_new_destination_address: string
+          p_new_destination_km: number
+        }
+        Returns: Json
+      }
       request_more_info: {
         Args: { p_mission_id: string; p_note: string }
         Returns: undefined
@@ -2035,13 +2112,19 @@ export type Database = {
         | "mission_completed"
         | "sos_acknowledged"
         | "wwm_check_in_overdue"
+        | "destination_changed"
       payment_status:
         | "requires_capture"
         | "succeeded"
         | "canceled"
         | "failed"
         | "processing"
-      payment_type: "auth" | "capture" | "refund" | "overage_auth"
+      payment_type:
+        | "auth"
+        | "capture"
+        | "refund"
+        | "overage_auth"
+        | "segment_auth"
       payout_batch_status: "draft" | "paid"
       protected_person_relation:
         | "self"
@@ -2226,6 +2309,7 @@ export const Constants = {
         "mission_completed",
         "sos_acknowledged",
         "wwm_check_in_overdue",
+        "destination_changed",
       ],
       payment_status: [
         "requires_capture",
@@ -2234,7 +2318,13 @@ export const Constants = {
         "failed",
         "processing",
       ],
-      payment_type: ["auth", "capture", "refund", "overage_auth"],
+      payment_type: [
+        "auth",
+        "capture",
+        "refund",
+        "overage_auth",
+        "segment_auth",
+      ],
       payout_batch_status: ["draft", "paid"],
       protected_person_relation: [
         "self",

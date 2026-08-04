@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOverageQuote, computeQuote, isWeekendPricingWindow } from "./engine";
+import { computeOverageQuote, computeQuote, computeSegmentQuote, isWeekendPricingWindow } from "./engine";
 import type { PricingConfig } from "./types";
 
 // Mirrors the v2.3 Hourly/Escort config shape (PROTEGO_MASTERPROMPT_v2.3.md
@@ -319,6 +319,45 @@ describe("computeOverageQuote", () => {
     ]);
     expect(overage.total).toBe(157.3);
     expect(overage.laborComponent).toBe(130);
+  });
+});
+
+// Chained rides (2026-08-04 founder decision) — mirrors the live-DB
+// verification of compute_segment_quote() (supabase/migrations/
+// 20260804120002_mission_segments.sql): wait_free_minutes=5,
+// wait_per_minute_rate=2, per_km=5, consumed=20min, new leg=10km ->
+// billable 15min*2=30 wait + 10km*5*1=50 distance = 80 subtotal,
+// *1.21 VAT = 96.80.
+describe("computeSegmentQuote — chained rides (2026-08-04)", () => {
+  const segmentConfig = { ...baseConfig, waitFreeMinutes: 5, waitPerMinuteRate: 2 };
+
+  it("bills only the wait overage and the new leg's distance, no base fare and no platform fee", () => {
+    const quote = computeSegmentQuote({ consumedWaitMinutes: 20, newKm: 10 }, segmentConfig);
+
+    expect(quote.total).toBe(96.8);
+    expect(quote.laborComponent).toBe(80);
+    expect(quote.lines).toEqual([
+      { label: "wait_at_destination", amount: 30 },
+      { label: "distance", amount: 50 },
+      { label: "vat", amount: 16.8 },
+    ]);
+  });
+
+  it("consuming only the free minutes charges nothing for wait, just the distance", () => {
+    const quote = computeSegmentQuote({ consumedWaitMinutes: 5, newKm: 4 }, segmentConfig);
+
+    const waitLine = quote.lines.find((l) => l.label === "wait_at_destination");
+    expect(waitLine?.amount).toBe(0);
+    expect(quote.total).toBe(24.2); // 4km*5=20, +21% VAT = 24.20
+  });
+
+  it("applies the same night/weekend/urgent coefficient (capped) to the distance leg as any other Protect Ride leg", () => {
+    const quote = computeSegmentQuote(
+      { consumedWaitMinutes: 0, newKm: 10, isNight: true, isWeekend: true, isUrgent: true },
+      segmentConfig
+    );
+    // raw 1.25*1.15*1.2=1.725, capped at coefCap=1.5 -> 10*5*1.5=75 distance
+    expect(quote.lines.find((l) => l.label === "distance")?.amount).toBe(75);
   });
 });
 

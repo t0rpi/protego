@@ -294,7 +294,11 @@
     "tlMonitored": "Route monitored by dispatch",
     "tlDone": "Mission complete",
     "tlCapture": "Payment is captured · you receive the report",
-    "finish": "See mission summary"
+    "finish": "See mission summary",
+    "continueRide": "Continue to another address",
+    "continueRideTitle": "Where to next?",
+    "consumedWaitMinutes": "Wait minutes consumed",
+    "continueAndPay": "Continue and pay"
   },
   "chat": {
     "monitored": "Conversation monitored by dispatch. Phone numbers stay hidden.",

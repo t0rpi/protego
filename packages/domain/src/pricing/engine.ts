@@ -154,6 +154,52 @@ export function computeQuote(input: QuoteInput, config: PricingConfig): Quote {
 }
 
 /**
+ * Chained rides (2026-08-04 founder decision) — the incremental cost of
+ * "Continua spre alta adresa": billable wait minutes consumed beyond the
+ * free allowance, plus the new leg's distance. Deliberately NO base fare
+ * (v2.3 §16's base fare covers the whole mission, not per leg) and NO
+ * platform fee (already charged once on the original mission) — mirrors
+ * public.compute_segment_quote() (supabase/migrations/
+ * 20260804120002_mission_segments.sql) line for line. Protect Ride only.
+ */
+export interface SegmentQuoteInput {
+  consumedWaitMinutes: number;
+  newKm: number;
+  isNight?: boolean;
+  isWeekend?: boolean;
+  isUrgent?: boolean;
+}
+
+export function computeSegmentQuote(
+  input: SegmentQuoteInput,
+  config: Pick<
+    PricingConfig,
+    "waitFreeMinutes" | "waitPerMinuteRate" | "perKm" | "coefNight" | "coefWeekend" | "coefUrgent" | "coefCap" | "vatRate"
+  >
+): Quote {
+  const coef = combinedCoefficient(config, input);
+
+  const billableMinutes = Math.max(0, input.consumedWaitMinutes - config.waitFreeMinutes);
+  const waitCost = round2(billableMinutes * (config.waitPerMinuteRate ?? 0));
+  const distanceCost = round2(input.newKm * config.perKm * coef);
+
+  const subtotal = waitCost + distanceCost;
+  const vat = round2(subtotal * config.vatRate);
+  const total = round2(subtotal + vat);
+
+  return {
+    lines: [
+      { label: "wait_at_destination", amount: waitCost },
+      { label: "distance", amount: distanceCost },
+      { label: "vat", amount: vat },
+    ],
+    total,
+    currency: "RON",
+    laborComponent: subtotal,
+  };
+}
+
+/**
  * Overage (prelungire) — business-rules.md §4: proposed automatically
  * but applied only after explicit client confirmation, never silently.
  * Only the incremental agent time + VAT is billed; the platform fee and

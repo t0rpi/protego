@@ -294,7 +294,11 @@
     "tlMonitored": "Traseu monitorizat de dispecerat",
     "tlDone": "Misiune încheiată",
     "tlCapture": "Plata se încasează · primești raportul",
-    "finish": "Vezi rezumatul misiunii"
+    "finish": "Vezi rezumatul misiunii",
+    "continueRide": "Continuă spre altă adresă",
+    "continueRideTitle": "Unde continuăm?",
+    "consumedWaitMinutes": "Minute de așteptare consumate",
+    "continueAndPay": "Continuă și plătește"
   },
   "chat": {
     "monitored": "Conversație monitorizată de dispecerat. Numerele de telefon rămân ascunse.",

@@ -8,6 +8,7 @@ import { useAuth } from "../../../lib/auth-context";
 import { cancelMissionPayment } from "../../../lib/payments";
 import { bookingStyles as s } from "../../../lib/booking-styles";
 import { OverageButton } from "../../../lib/overage-button";
+import { ContinueRideButton } from "../../../lib/continue-ride-button";
 
 interface MissionInfo {
   status: string;
@@ -15,6 +16,9 @@ interface MissionInfo {
   destination_address: string | null;
   verification_code: string | null;
   mobility: string;
+  city: string;
+  wait_at_destination_minutes: number | null;
+  service_key: string | null;
 }
 
 interface ReceiptLine {
@@ -63,10 +67,17 @@ export default function ClientMissionScreen() {
 
     const { data: m } = await supabase
       .from("missions")
-      .select("status, pickup_address, destination_address, verification_code, mobility")
+      .select("status, pickup_address, destination_address, verification_code, mobility, city, wait_at_destination_minutes, services(key)")
       .eq("id", missionId)
       .single();
-    setMission(m);
+    setMission(
+      m
+        ? {
+            ...m,
+            service_key: (m as unknown as { services: { key: string } | null }).services?.key ?? null,
+          }
+        : null
+    );
 
     if (m && ["enroute", "arrived", "active"].includes(m.status)) {
       const { data: loc } = await supabase
@@ -343,12 +354,23 @@ export default function ClientMissionScreen() {
               <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20 }}>SOS</Text>
             </Pressable>
 
-            <OverageButton
-              missionId={missionId}
-              hours={1}
-              label={`+1h (${t("quote.extendPolicy")})`}
-              onError={setError}
-            />
+            {mission.service_key === "protect_ride" && mission.wait_at_destination_minutes ? (
+              <ContinueRideButton
+                missionId={missionId}
+                city={mission.city}
+                currentDestinationAddress={mission.destination_address}
+                waitAtDestinationMinutes={mission.wait_at_destination_minutes}
+                onError={setError}
+                onContinued={load}
+              />
+            ) : (
+              <OverageButton
+                missionId={missionId}
+                hours={1}
+                label={`+1h (${t("quote.extendPolicy")})`}
+                onError={setError}
+              />
+            )}
           </>
         ) : null}
 

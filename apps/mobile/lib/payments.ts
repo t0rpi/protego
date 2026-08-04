@@ -42,6 +42,24 @@ export async function createOveragePayment(
   return data;
 }
 
+export async function createSegmentPayment(
+  missionId: string,
+  newDestinationAddress: string,
+  newDestinationKm: number,
+  consumedWaitMinutes: number
+): Promise<{ client_secret: string; total: number; segment_number: number }> {
+  const { data, error } = await supabase.functions.invoke("create-segment-payment", {
+    body: {
+      mission_id: missionId,
+      new_destination_address: newDestinationAddress,
+      new_destination_km: newDestinationKm,
+      consumed_wait_minutes: consumedWaitMinutes,
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function captureMissionPayment(missionId: string): Promise<{ ok: true; results: unknown }> {
   const { data, error } = await supabase.functions.invoke("capture-mission-payment", {
     body: { mission_id: missionId },

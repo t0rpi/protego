@@ -66,7 +66,12 @@ Deno.serve(async (req) => {
         // completion), a partial capture (cancellation fee), or an
         // overage PaymentIntent.
         if (missionId) {
-          const type = pi.metadata?.payment_type === "overage_auth" ? "overage_auth" : "capture";
+          const type =
+            pi.metadata?.payment_type === "overage_auth"
+              ? "overage_auth"
+              : pi.metadata?.payment_type === "segment_auth"
+                ? "segment_auth"
+                : "capture";
           await supabase.rpc("record_payment_event", {
             p_mission_id: missionId,
             p_type: type,

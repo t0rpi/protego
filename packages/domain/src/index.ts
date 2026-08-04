@@ -7,8 +7,9 @@ export {
 } from "./verification/rules";
 export type { VerificationGateInput } from "./verification/rules";
 
-export { computeQuote, computeOverageQuote } from "./pricing/engine";
+export { computeQuote, computeOverageQuote, computeSegmentQuote, isWeekendPricingWindow } from "./pricing/engine";
 export type { PricingConfig, Quote, QuoteInput, QuoteLine, ServiceKey, Mobility } from "./pricing/types";
+export type { SegmentQuoteInput } from "./pricing/engine";
 
 export { computeRiskLevel } from "./risk/rules";
 export type { ContextKind, ContextQuestionnaireAnswers, RiskLevel } from "./risk/rules";
