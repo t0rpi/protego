@@ -53,8 +53,17 @@ export default function ClientHomeScreen() {
       );
   }, [session]);
 
-  if (loading || profile === undefined) {
-    console.log("[boot] Home showing loading spinner", { loading, profileIsUndefined: profile === undefined });
+  // Root cause of the reported permanent-spinner hang (2026-08-05, found
+  // via boot logs): this used to check `profile === undefined` in the
+  // SAME condition as `loading`, before checking `!session`. The profile
+  // fetch effect above does `if (!session) return;` — so when there's no
+  // session, `profile` never gets set and stays `undefined` forever,
+  // trapping a logged-out device on this spinner and never reaching the
+  // redirect-to-login below. Order matters: resolve auth loading first,
+  // then handle "no session" immediately, and only THEN wait on profile
+  // (which only ever matters once we know a session exists).
+  if (loading) {
+    console.log("[boot] Home showing loading spinner (auth loading)");
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={tokens.color.base.gold} />
@@ -63,7 +72,17 @@ export default function ClientHomeScreen() {
   }
 
   if (!session) {
+    console.log("[boot] Home redirecting to /login (no session)");
     return <Redirect href="/login" />;
+  }
+
+  if (profile === undefined) {
+    console.log("[boot] Home showing loading spinner (profile fetch in flight)");
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={tokens.color.base.gold} />
+      </View>
+    );
   }
 
   if (profile?.role === "agent") {
