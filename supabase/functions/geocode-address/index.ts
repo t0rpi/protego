@@ -7,6 +7,12 @@
 // "Folosim adresa: X" confirmation, and so the confirmed place_id can
 // be used exactly like a tapped autocomplete suggestion afterwards.
 // Same server-only key trust boundary as the other Maps functions.
+//
+// GPS auto-location (2026-08-04 founder decision): the same reverse-
+// confirmation requirement applies to a device GPS fix -- coordinates
+// are never dispatched on directly, only the formatted_address Google
+// returns for them, through this same endpoint (reverse geocoding is
+// the same Geocoding API, just keyed by `latlng` instead of `address`).
 import { corsHeaders, getCallerUserId, getGoogleMapsApiKey, jsonResponse } from "../_shared/clients.ts";
 
 Deno.serve(async (req) => {
@@ -17,14 +23,17 @@ Deno.serve(async (req) => {
   try {
     await getCallerUserId(req);
 
-    const { address } = await req.json();
-    if (typeof address !== "string" || address.trim().length < 5) {
-      return jsonResponse({ result: null });
-    }
-
+    const { address, lat, lng } = await req.json();
     const apiKey = getGoogleMapsApiKey();
     const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", address);
+
+    if (typeof lat === "number" && typeof lng === "number") {
+      url.searchParams.set("latlng", `${lat},${lng}`);
+    } else if (typeof address === "string" && address.trim().length >= 5) {
+      url.searchParams.set("address", address);
+    } else {
+      return jsonResponse({ result: null });
+    }
     url.searchParams.set("region", "ro");
     url.searchParams.set("key", apiKey);
 

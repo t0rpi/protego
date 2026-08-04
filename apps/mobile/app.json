@@ -28,6 +28,12 @@
           "photosPermission": "PROTEGO are nevoie de acces la galerie pentru fotografiile vehiculului.",
           "cameraPermission": "PROTEGO are nevoie de acces la cameră pentru fotografiile vehiculului."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PROTEGO are nevoie de locația ta pentru a completa automat adresa de preluare."
+        }
       ]
     ],
     "experiments": {

@@ -46,6 +46,21 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
 }
 
 /**
+ * GPS auto-location (2026-08-04 founder decision) — reverse-geocodes a
+ * device coordinate to the same formatted_address/place_id shape as
+ * geocodeAddress, so a GPS fix goes through the exact same mandatory
+ * confirmation path as any typed address (never dispatched on as raw
+ * coordinates).
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeResult | null> {
+  const { data, error } = await supabase.functions.invoke("geocode-address", {
+    body: { lat, lng },
+  });
+  if (error) throw error;
+  return data.result ?? null;
+}
+
+/**
  * Prefers a selected suggestion's place_id for each endpoint when
  * available; falls back to geocoding the raw typed text server-side
  * otherwise. This matters — most real bookings never tap a suggestion

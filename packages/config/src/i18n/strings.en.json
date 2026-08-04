@@ -140,6 +140,7 @@
   "booking": {
     "route": "Route",
     "pickupPh": "Where do we pick you up?",
+    "locationDisabledHint": "Location is off — enable it in your phone settings for auto-fill, or enter the address manually.",
     "destPh": "Destination",
     "distanceCalculating": "Calculating distance...",
     "distanceComputed": "Distance: {{km}} km",

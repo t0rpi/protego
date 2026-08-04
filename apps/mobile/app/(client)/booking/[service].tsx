@@ -9,6 +9,7 @@ import { bookingStyles as s } from "../../../lib/booking-styles";
 import { PaymentStep } from "../../../lib/payment-step";
 import { PlaceAutocompleteInput } from "../../../lib/place-autocomplete-input";
 import { computeRouteDistanceKm, type PlacePrediction } from "../../../lib/places";
+import { getCurrentPickupLocation } from "../../../lib/gps-location";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 type Mobility = Database["public"]["Enums"]["mission_mobility"];
@@ -125,6 +126,17 @@ export default function BookingWizardScreen() {
   const [distanceKm, setDistanceKm] = useState("");
   const [distanceLoading, setDistanceLoading] = useState(false);
   const [distanceError, setDistanceError] = useState<string | null>(null);
+
+  // GPS auto-location for pickup (2026-08-04 founder decision) — runs
+  // once per visit to the "where" step, only while the field is still
+  // empty (never overwrites something the client already typed/edited).
+  // The prefilled text is left unconfirmed (pickupPlaceId stays null),
+  // so it goes through the exact same PlaceAutocompleteInput geocode-
+  // confirmation banner a typed address would — never dispatched on as
+  // raw coordinates.
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "services_disabled" | "permission_denied" | "unavailable" | "ok">(
+    "idle"
+  );
 
   // step: when — scheduled_at exists on missions since M2, but the
   // wizard never collected it (booking always defaulted to "now"); M3
@@ -259,6 +271,22 @@ export default function BookingWizardScreen() {
       clearTimeout(timer);
     };
   }, [isRideForDistance, pickupPlaceId, destinationPlaceId, pickupAddress, destinationAddress]);
+
+  useEffect(() => {
+    if (step !== "where" || gpsStatus !== "idle" || pickupAddress || pickupPlaceId) return;
+    let cancelled = false;
+    getCurrentPickupLocation().then((result) => {
+      if (cancelled) return;
+      setGpsStatus(result.status);
+      if (result.status === "ok") {
+        setPickupAddress(result.formattedAddress);
+        setPickupPlaceId(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, gpsStatus, pickupAddress, pickupPlaceId]);
 
   useEffect(() => {
     if (!session) return;
@@ -498,6 +526,9 @@ export default function BookingWizardScreen() {
                   setPickupPlaceId(prediction.place_id);
                 }}
               />
+              {gpsStatus === "services_disabled" ? (
+                <Text style={s.note}>{t("booking.locationDisabledHint")}</Text>
+              ) : null}
             </View>
             {isRide ? (
               <>
