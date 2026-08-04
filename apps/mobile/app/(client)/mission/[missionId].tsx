@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { tokens } from "@protego/ui";
+import { Button, Card, Disclaimer112, RowLine, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { cancelMissionPayment } from "../../../lib/payments";
@@ -251,7 +251,7 @@ export default function ClientMissionScreen() {
           <Text style={[s.title, { color: tokens.color.base.danger }]}>{t("sos.activePill")}</Text>
           <Text style={s.intro}>{t("sos.body")}</Text>
           <Text style={s.note}>{t("sos.locationSent")}</Text>
-          <Text style={s.note}>{t("legal.not112")}</Text>
+          <Disclaimer112 text={t("legal.not112")} />
           <Pressable style={s.button} onPress={cancelFalseAlarm}>
             <Text style={s.buttonText}>{t("sos.cancelFalse")}</Text>
           </Pressable>
@@ -263,11 +263,14 @@ export default function ClientMissionScreen() {
   return (
     <View style={s.container}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.title}>
-          {["enroute", "arrived", "active", "done"].includes(mission.status)
-            ? t(`tracking.${mission.status}` as "tracking.enroute", { eta: "—", code: mission.verification_code ?? "" })
-            : mission.status}
-        </Text>
+        {["enroute", "arrived", "active", "done"].includes(mission.status) ? (
+          <StatusPill
+            status={mission.status as MissionDisplayStatus}
+            label={t(`tracking.${mission.status}` as "tracking.enroute", { eta: "—", code: mission.verification_code ?? "" })}
+          />
+        ) : (
+          <Text style={s.title}>{mission.status}</Text>
+        )}
 
         <View style={[s.card, { backgroundColor: "#101216", alignItems: "center", minHeight: 140, justifyContent: "center" }]}>
           {position ? (
@@ -334,7 +337,7 @@ export default function ClientMissionScreen() {
 
         {mission.status === "active" ? (
           <>
-            <Text style={s.note}>{t("legal.not112")}</Text>
+            <Disclaimer112 text={t("legal.not112")} compact />
             <Pressable
               style={{
                 alignSelf: "center",
@@ -377,32 +380,23 @@ export default function ClientMissionScreen() {
         {["draft", "quoted", "review", "confirmed"].includes(mission.status) ? (
           <>
             <Text style={s.note}>{t("quote.cancelPolicy", { min: 60 })}</Text>
-            <Pressable
-              style={[s.ghostButton, cancelBusy && s.buttonDisabled]}
-              onPress={cancelMission}
-              disabled={cancelBusy}
-            >
-              <Text style={s.ghostButtonText}>{t("common.cancel")}</Text>
-            </Pressable>
+            <Button label={t("common.cancel")} variant="ghost" loading={cancelBusy} onPress={cancelMission} />
           </>
         ) : null}
 
         {mission.status === "done" ? (
           <>
             <Text style={s.title}>{t("summary.headline")}</Text>
-            {receipt
-              ? receipt.lines.map((line, index) => (
-                  <View style={s.quoteLine} key={`${line.label}-${index}`}>
-                    <Text style={s.quoteLineLabel}>{line.label}</Text>
-                    <Text style={s.quoteLineAmount}>{line.amount} lei</Text>
-                  </View>
-                ))
-              : null}
-            {receipt ? <Text style={s.quoteTotal}>{receipt.total} lei</Text> : null}
+            {receipt ? (
+              <Card style={{ gap: tokens.spacing[2] }}>
+                {receipt.lines.map((line, index) => (
+                  <RowLine key={`${line.label}-${index}`} label={line.label} value={`${line.amount} lei`} />
+                ))}
+                <RowLine label={t("quote.total")} value={`${receipt.total} lei`} strong gold />
+              </Card>
+            ) : null}
             <Text style={s.note}>{t("summary.note")}</Text>
-            <Pressable style={s.button} onPress={() => router.replace("/")}>
-              <Text style={s.buttonText}>{t("tracking.finish")}</Text>
-            </Pressable>
+            <Button label={t("tracking.finish")} onPress={() => router.replace("/")} />
           </>
         ) : null}
       </ScrollView>

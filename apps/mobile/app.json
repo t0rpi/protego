@@ -34,7 +34,8 @@
         {
           "locationWhenInUsePermission": "PROTEGO are nevoie de locația ta pentru a completa automat adresa de preluare."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

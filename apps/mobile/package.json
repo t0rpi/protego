@@ -14,6 +14,8 @@
     "test": "echo \"no tests yet — apps/mobile\" && exit 0"
   },
   "dependencies": {
+    "@expo-google-fonts/cinzel": "^0.4.2",
+    "@expo-google-fonts/manrope": "^0.4.2",
     "@protego/config": "workspace:*",
     "@protego/domain": "workspace:*",
     "@protego/supabase": "workspace:*",
@@ -23,6 +25,7 @@
     "expo": "~57.0.8",
     "expo-constants": "~57.0.7",
     "expo-dev-client": "~57.0.10",
+    "expo-font": "~57.0.1",
     "expo-image-picker": "~57.0.6",
     "expo-linking": "~57.0.4",
     "expo-location": "~57.0.7",

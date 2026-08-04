@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@protego/supabase";
+import { Button, QuoteBox } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
@@ -929,29 +930,22 @@ export default function BookingWizardScreen() {
 
         {step === "quote" && (
           <>
-            <Text style={s.title}>{t("quote.title")}</Text>
-            <Text style={s.note}>{t("quote.estimateNote")}</Text>
-            {quoteLines.map((line, index) => (
-              <View style={s.quoteLine} key={`${line.label}-${index}`}>
-                <Text style={s.quoteLineLabel}>
-                  {formatQuoteLineLabel(line.label, t, distanceKm, agentCount, durationHours)}
-                </Text>
-                <Text style={s.quoteLineAmount}>{line.amount} lei</Text>
-              </View>
-            ))}
-            <Text style={s.quoteTotal}>{quoteTotal} lei</Text>
+            <QuoteBox
+              eyebrow={t("quote.title")}
+              total={quoteTotal ?? 0}
+              currency="RON"
+              note={t("quote.estimateNote")}
+              lines={quoteLines}
+              formatLineLabel={(label) => formatQuoteLineLabel(label, t, distanceKm, agentCount, durationHours)}
+            />
 
             {error ? <Text style={s.error}>{error}</Text> : null}
 
-            <Pressable style={[s.button, busy && s.buttonDisabled]} onPress={proceedFromQuote} disabled={busy}>
-              {busy ? (
-                <ActivityIndicator color="#161307" />
-              ) : (
-                <Text style={s.buttonText}>
-                  {riskLevel === "high" ? t("common.continue") : t("quote.toPay")}
-                </Text>
-              )}
-            </Pressable>
+            <Button
+              label={riskLevel === "high" ? t("common.continue") : t("quote.toPay")}
+              loading={busy}
+              onPress={proceedFromQuote}
+            />
           </>
         )}
 

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth-context";
-import { bookingStyles as s } from "../../lib/booking-styles";
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../lib/auth-context";
+import { bookingStyles as s } from "../../../lib/booking-styles";
 
 interface EarningRow {
   amount: number;
@@ -18,6 +18,9 @@ interface EarningRow {
  * base table directly and does all three aggregations here. Payout
  * EXECUTION (agentApp.payout: "Payout automat luni") is M5 — this
  * screen is read-only.
+ *
+ * Relocated into (agent)/(tabs)/ (2026-08-04, tab bar nav pass) — same
+ * URL ("/earnings"), unchanged content.
  */
 export default function EarningsScreen() {
   const { t } = useTranslation();

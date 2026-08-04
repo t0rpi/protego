@@ -13,6 +13,10 @@ import { useAuth } from "../../../lib/auth-context";
  * already disclosed the same gap and used a fixed mock coordinate near
  * Oradea) — Shield's location reporting follows that same precedent
  * rather than introducing a new native dependency for this milestone.
+ *
+ * Relocated into (client)/(tabs)/ (2026-08-04, tab bar nav pass) — same
+ * URL ("/shield"), unchanged content; group folders don't affect the
+ * route path, only this file's own name does.
  */
 const MOCK_LAT = 47.0465;
 const MOCK_LNG = 21.9189;

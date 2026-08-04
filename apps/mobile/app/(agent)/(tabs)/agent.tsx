@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth-context";
-import { bookingStyles as s } from "../../lib/booking-styles";
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../lib/auth-context";
+import { bookingStyles as s } from "../../../lib/booking-styles";
 
 interface AgentRow {
   status: "in_review" | "approved" | "active" | "blocked";
@@ -32,6 +32,10 @@ interface MissionBanner {
  * status/checklist/incident/completion/earnings only; the docExpiry
  * banner below is read-only, sourced from the same agent_documents
  * table M1 already built.
+ *
+ * Relocated into (agent)/(tabs)/ (2026-08-04, tab bar nav pass) — same
+ * URL ("/agent"), unchanged content; group folders don't affect the
+ * route path, only this file's own name does.
  */
 export default function AgentHomeScreen() {
   const { t } = useTranslation();
@@ -215,18 +219,10 @@ export default function AgentHomeScreen() {
                 <Text style={s.cardDesc}>{missionBanner.mission_status}</Text>
               </Pressable>
             ) : null}
-
-            <Pressable style={s.button} onPress={() => router.push("/earnings")}>
-              <Text style={s.buttonText}>{t("agentApp.earningsTitle")}</Text>
-            </Pressable>
           </>
         ) : (
           <Text style={s.note}>{t("agentApp.blockedNote")}</Text>
         )}
-
-        <Pressable style={s.ghostButton} onPress={() => supabase.auth.signOut()}>
-          <Text style={s.ghostButtonText}>{t("common.close")}</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );

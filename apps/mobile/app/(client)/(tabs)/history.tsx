@@ -1,0 +1,155 @@
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { Button, Card, StatusPill, tokens } from "@protego/ui";
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../lib/auth-context";
+
+interface HistoryMission {
+  id: string;
+  destination_address: string | null;
+  pickup_address: string | null;
+  created_at: string;
+  service_key: string;
+  total: number | null;
+}
+
+/**
+ * Client History tab (design/HANDOFF.md §5 inventory: "istoric + re-book",
+ * i18n history.* keys already existed, unused until this Pass A screen).
+ * Past ("done") missions only — active/in-progress ones stay on their
+ * own tracking screen, reachable from the Home tab's ongoing-mission
+ * state (not built this pass — see Design-2 follow-up notes).
+ */
+export default function HistoryScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { session } = useAuth();
+  const [missions, setMissions] = useState<HistoryMission[] | null>(null);
+
+  const load = useCallback(async () => {
+    if (!session) return;
+    const { data: rows } = await supabase
+      .from("missions")
+      .select("id, destination_address, pickup_address, created_at, services(key)")
+      .eq("client_id", session.user.id)
+      .eq("status", "done")
+      .order("created_at", { ascending: false });
+
+    const missionIds = (rows ?? []).map((row) => row.id);
+    const totalsByMission = new Map<string, number>();
+    if (missionIds.length > 0) {
+      const { data: quoteRows } = await supabase
+        .from("quotes")
+        .select("mission_id, total_estimate")
+        .in("mission_id", missionIds)
+        .eq("kind", "final");
+      for (const quote of quoteRows ?? []) {
+        totalsByMission.set(quote.mission_id, quote.total_estimate);
+      }
+    }
+
+    setMissions(
+      (rows ?? []).map((row) => ({
+        id: row.id,
+        destination_address: row.destination_address,
+        pickup_address: row.pickup_address,
+        created_at: row.created_at,
+        service_key: (row as unknown as { services: { key: string } | null }).services?.key ?? "",
+        total: totalsByMission.get(row.id) ?? null,
+      }))
+    );
+  }, [session]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.title}>{t("history.title")}</Text>
+
+        {missions === null ? (
+          <ActivityIndicator color={tokens.color.base.gold} />
+        ) : missions.length === 0 ? (
+          <Card>
+            <Text style={styles.emptyTitle}>{t("history.emptyTitle")}</Text>
+            <Text style={styles.emptyDesc}>{t("history.emptyDesc")}</Text>
+          </Card>
+        ) : (
+          missions.map((mission) => (
+            <Card key={mission.id} style={styles.card}>
+              <StatusPill status="done" label={t("tracking.done")} />
+              <Text style={styles.address}>{mission.destination_address ?? mission.pickup_address ?? ""}</Text>
+              <Text style={styles.date}>{new Date(mission.created_at).toLocaleDateString()}</Text>
+              {mission.total !== null ? <Text style={styles.total}>{mission.total} lei</Text> : null}
+              <View style={styles.actions}>
+                <Button
+                  label={t("history.repeat")}
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => router.push(`/booking/${mission.service_key || "protect_ride"}`)}
+                />
+              </View>
+            </Card>
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: tokens.color.semantic.surfaceApp,
+  },
+  scroll: {
+    padding: tokens.spacing[6],
+    gap: tokens.spacing[4],
+    paddingBottom: tokens.spacing[10],
+  },
+  title: {
+    color: tokens.color.semantic.textPrimary,
+    fontSize: tokens.typography.size.h2,
+    fontWeight: "700",
+  },
+  emptyTitle: {
+    color: tokens.color.semantic.textPrimary,
+    fontSize: tokens.typography.size.title,
+    fontWeight: "600",
+  },
+  emptyDesc: {
+    color: tokens.color.semantic.textSecondary,
+    fontSize: tokens.typography.size.small,
+  },
+  card: {
+    gap: tokens.spacing[2],
+  },
+  address: {
+    color: tokens.color.semantic.textPrimary,
+    fontSize: tokens.typography.size.body,
+    fontWeight: "600",
+  },
+  date: {
+    color: tokens.color.semantic.textTertiary,
+    fontSize: tokens.typography.size.caption,
+  },
+  total: {
+    color: tokens.color.base.gold,
+    fontSize: tokens.typography.size.title,
+    fontWeight: "700",
+  },
+  actions: {
+    flexDirection: "row",
+  },
+});

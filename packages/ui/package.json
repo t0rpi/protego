@@ -17,8 +17,15 @@
     "test": "echo \"no tests yet — packages/ui\" && exit 0"
   },
   "dependencies": {},
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
   "devDependencies": {
+    "@types/react": "~19.2.2",
     "eslint": "^9.17.0",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
     "typescript": "^5.7.2"
   }
 }
