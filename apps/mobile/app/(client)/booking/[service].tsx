@@ -44,6 +44,7 @@ const QUOTE_LINE_KEYS: Record<string, string> = {
   door_to_door_included: "quote.lineDoorToDoor",
   wait_at_destination: "quote.lineWait",
   accompany_inside: "quote.lineAccompany",
+  vehicle_km_surcharge: "quote.lineVehicleKmSurcharge",
 };
 
 /**
@@ -91,8 +92,22 @@ export default function BookingWizardScreen() {
 
   const [step, setStep] = useState<Step>("where");
   const [missionId, setMissionId] = useState<string | null>(null);
+  const [serviceId, setServiceId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Last-mile + vehicle-km pricing rates (2026-08-04 v2.4) — fetched once
+  // the service row is known, so the wizard can show the client the real
+  // configured rate ("25 lei / primele 15 min, apoi X lei/min") instead of
+  // a hardcoded string. Never used for the actual charge — that's always
+  // compute_quote() server-side (CLAUDE.md: "Prices come from DB config,
+  // never constants").
+  const [accompanyFee, setAccompanyFee] = useState<number | null>(null);
+  const [accompanyIncludedMinutes, setAccompanyIncludedMinutes] = useState(15);
+  const [accompanyHourlyThresholdMinutes, setAccompanyHourlyThresholdMinutes] = useState(45);
+  const [waitPerMinuteRate, setWaitPerMinuteRate] = useState<number | null>(null);
+  const [vehicleIncludedKmPerHour, setVehicleIncludedKmPerHour] = useState<number | null>(null);
+  const [vehicleKmSurchargeRate, setVehicleKmSurchargeRate] = useState<number | null>(null);
 
   // step: where/when
   const [pickupAddress, setPickupAddress] = useState("");
@@ -147,7 +162,17 @@ export default function BookingWizardScreen() {
   // opt-ins reflected as separate quote lines).
   const [waitAtDestination, setWaitAtDestination] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState(10);
-  const [accompanyInside, setAccompanyInside] = useState(false);
+  const [accompanyInsideRequested, setAccompanyInsideRequested] = useState(false);
+  // 2026-08-04 v2.4: flat fee now covers the first N minutes (config-driven,
+  // default 15) before per-minute overage kicks in — replaces the old plain
+  // boolean, mirrors the waitAtDestination/waitMinutes stepper pattern.
+  const [accompanyMinutes, setAccompanyMinutes] = useState(15);
+
+  // step: mobility (escort/hourly + protego_vehicle variant — optional
+  // estimated-km input, 2026-08-04 v2.4: feeds the new vehicle-km-surcharge
+  // line. Escort/Hourly never had a km concept before this; left blank, no
+  // surcharge line appears (compute_quote only adds it when input.km is set).
+  const [vehicleEstimatedKm, setVehicleEstimatedKm] = useState("");
 
   // step: context
   const [hasKnownThreat, setHasKnownThreat] = useState(false);
@@ -173,6 +198,7 @@ export default function BookingWizardScreen() {
         if (!cancelled) setError(svcError?.message ?? `unknown service ${serviceKey}`);
         return;
       }
+      if (!cancelled) setServiceId(svc.id);
       const { data, error: insertError } = await supabase
         .from("missions")
         .insert({ client_id: session.user.id, service_id: svc.id, city: "Oradea" })
@@ -242,6 +268,37 @@ export default function BookingWizardScreen() {
       .then(({ data }) => setProtectedPersons(data ?? []));
   }, [session]);
 
+  // 2026-08-04 v2.4 — read-only preview of the configured rates so the
+  // selection screens can show real numbers ("25 lei / primele 15 min,
+  // apoi X lei/min") before the client ever reaches the quote step. The
+  // actual charge always comes from compute_quote() server-side; this
+  // fetch never feeds into the price itself.
+  useEffect(() => {
+    if (!serviceId) return;
+    let cancelled = false;
+    supabase
+      .from("pricing_config")
+      .select(
+        "accompany_inside_fee, accompany_inside_included_minutes, accompany_inside_hourly_threshold_minutes, wait_per_minute_rate, vehicle_included_km_per_hour, vehicle_km_surcharge_rate"
+      )
+      .eq("service_id", serviceId)
+      .eq("city", "Oradea")
+      .single()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setAccompanyFee(data.accompany_inside_fee);
+        setAccompanyIncludedMinutes(data.accompany_inside_included_minutes);
+        setAccompanyHourlyThresholdMinutes(data.accompany_inside_hourly_threshold_minutes);
+        setWaitPerMinuteRate(data.wait_per_minute_rate);
+        setVehicleIncludedKmPerHour(data.vehicle_included_km_per_hour);
+        setVehicleKmSurchargeRate(data.vehicle_km_surcharge_rate);
+        setAccompanyMinutes(data.accompany_inside_included_minutes);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId]);
+
   const isRide = serviceKey === "protect_ride";
 
   // Founder + coordinator decision (2026-08-03): address confirmation is
@@ -292,7 +349,11 @@ export default function BookingWizardScreen() {
         destination_address: isRide ? destinationAddress || null : null,
         scheduled_at: scheduledAt,
         duration_hours: isRide ? null : durationHours,
-        distance_km: isRide ? Number(distanceKm) || null : null,
+        distance_km: isRide
+          ? Number(distanceKm) || null
+          : mobility === "protego_vehicle"
+            ? Number(vehicleEstimatedKm) || null
+            : null,
         protected_person_id: selectedPersonId,
         agent_count: agentCount,
         agent_preference: agentPreference,
@@ -304,7 +365,7 @@ export default function BookingWizardScreen() {
         context_kind: contextKind,
         context_details: contextDetails || null,
         wait_at_destination_minutes: isRide && waitAtDestination ? waitMinutes : null,
-        accompany_inside_requested: isRide ? accompanyInside : false,
+        accompany_inside_minutes: isRide && accompanyInsideRequested ? accompanyMinutes : null,
       })
       .eq("id", missionId);
 
@@ -654,14 +715,44 @@ export default function BookingWizardScreen() {
             ) : null}
 
             <Pressable
-              style={[s.card, accompanyInside && s.cardSelected]}
-              onPress={() => setAccompanyInside((v) => !v)}
+              style={[s.card, accompanyInsideRequested && s.cardSelected]}
+              onPress={() => setAccompanyInsideRequested((v) => !v)}
             >
               <Text style={s.cardTitle}>
-                {accompanyInside ? "☑" : "☐"} {t("booking.accompanyTitle")}
+                {accompanyInsideRequested ? "☑" : "☐"} {t("booking.accompanyTitle")}
               </Text>
               <Text style={s.cardDesc}>{t("booking.accompanyDesc")}</Text>
+              {accompanyFee !== null ? (
+                <Text style={s.cardDesc}>
+                  {t("booking.accompanyRateNote", {
+                    fee: accompanyFee,
+                    included: accompanyIncludedMinutes,
+                    rate: waitPerMinuteRate ?? 0,
+                  })}
+                </Text>
+              ) : null}
             </Pressable>
+            {accompanyInsideRequested ? (
+              <>
+                <View style={s.row}>
+                  <Pressable
+                    style={s.chip}
+                    onPress={() => setAccompanyMinutes((m) => Math.max(5, m - 5))}
+                  >
+                    <Text style={s.chipText}>-</Text>
+                  </Pressable>
+                  <Text style={s.chipText}>{accompanyMinutes} min</Text>
+                  <Pressable style={s.chip} onPress={() => setAccompanyMinutes((m) => m + 5)}>
+                    <Text style={s.chipText}>+</Text>
+                  </Pressable>
+                </View>
+                {accompanyMinutes >= accompanyHourlyThresholdMinutes ? (
+                  <Text style={s.note}>
+                    {t("booking.accompanyHourlySuggestion", { min: accompanyHourlyThresholdMinutes })}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
 
             <Pressable style={s.button} onPress={() => setStep("context")}>
               <Text style={s.buttonText}>{t("common.continue")}</Text>
@@ -679,6 +770,29 @@ export default function BookingWizardScreen() {
               <Text style={s.cardTitle}>{t("booking.vehProtego")}</Text>
               <Text style={s.cardDesc}>{t("booking.vehProtegoDesc")}</Text>
             </Pressable>
+
+            {mobility === "protego_vehicle" && (
+              <View>
+                <Text style={s.label}>{t("booking.vehKmEstimateLabel")}</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="0"
+                  placeholderTextColor="#6B7178"
+                  keyboardType="numeric"
+                  value={vehicleEstimatedKm}
+                  onChangeText={setVehicleEstimatedKm}
+                />
+                {vehicleIncludedKmPerHour !== null && vehicleKmSurchargeRate !== null ? (
+                  <Text style={s.note}>
+                    {t("booking.vehKmEstimateHint", {
+                      included: vehicleIncludedKmPerHour,
+                      rate: vehicleKmSurchargeRate,
+                    })}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
             <Pressable
               style={[s.card, mobility === "client_vehicle" && s.cardSelected]}
               onPress={() => setMobility("client_vehicle")}

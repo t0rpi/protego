@@ -27,11 +27,15 @@ const baseConfig: PricingConfig = {
   waitFreeMinutes: 5,
   waitPerMinuteRate: null,
   accompanyInsideFee: null,
-  accompanyInsideHourlyThresholdMinutes: 30,
+  accompanyInsideIncludedMinutes: 15,
+  accompanyInsideHourlyThresholdMinutes: 45,
   agentMinimumPerMission: null,
   cancellationFeePct: 0.3,
   cancellationFeeMinimum: 30,
   agentSharePct: 0.55,
+  vehicleIncludedKmPerHour: null,
+  vehicleKmSurchargeRate: null,
+  platformFeePerHour: null,
 };
 
 describe("computeQuote — Escort/Hourly (hourly agent rate)", () => {
@@ -230,21 +234,79 @@ describe("computeQuote — Protect Ride (flat + per-km, vehicle bundled)", () =>
     expect(quote.lines.find((l) => l.label === "wait_at_destination")?.amount).toBe(0);
   });
 
-  it("charges the flat accompany_inside fee when requested", () => {
-    const config = { ...baseConfig, accompanyInsideFee: 25 };
+  it("charges only the flat accompany_inside fee within the included minutes", () => {
+    const config = { ...baseConfig, accompanyInsideFee: 25, accompanyInsideIncludedMinutes: 15 };
     const quote = computeQuote(
-      {
-        serviceKey: "protect_ride",
-        agentCount: 1,
-        hours: 0,
-        km: 15,
-        mobility: "protego_vehicle",
-        accompanyInside: true,
-      },
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, km: 15, mobility: "protego_vehicle", accompanyMinutes: 10 },
       config
     );
     expect(quote.lines.find((l) => l.label === "accompany_inside")?.amount).toBe(25);
     expect(quote.laborComponent).toBe(105 + 25);
+  });
+
+  it("charges the flat fee plus per-minute overage past the included minutes (2026-08-04)", () => {
+    const config = {
+      ...baseConfig,
+      accompanyInsideFee: 25,
+      accompanyInsideIncludedMinutes: 15,
+      waitPerMinuteRate: 2,
+    };
+    const quote = computeQuote(
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, km: 15, mobility: "protego_vehicle", accompanyMinutes: 40 },
+      config
+    );
+    // 25 flat + (40-15)*2 = 25 + 50 = 75
+    expect(quote.lines.find((l) => l.label === "accompany_inside")?.amount).toBe(75);
+    expect(quote.laborComponent).toBe(105 + 75);
+  });
+});
+
+describe("computeQuote — Escort/Hourly vehicle km surcharge (2026-08-04)", () => {
+  it("adds a vehicle_km_surcharge line only when driving exceeds the included allowance", () => {
+    const config = { ...baseConfig, vehicleIncludedKmPerHour: 25, vehicleKmSurchargeRate: 2 };
+    const quote = computeQuote(
+      { serviceKey: "escort", agentCount: 1, hours: 3, km: 100, mobility: "protego_vehicle" },
+      config
+    );
+    // included = 25*3 = 75km; surcharge = (100-75)*2 = 50
+    expect(quote.lines.find((l) => l.label === "vehicle_km_surcharge")?.amount).toBe(50);
+    // vehicle line itself should include the surcharge (150 base + 50 surcharge)
+    expect(quote.lines.find((l) => l.label === "vehicle")?.amount).toBe(150);
+    // surcharge stays out of labor_component — vehicle revenue is the company's
+    expect(quote.laborComponent).toBe(quote.lines.find((l) => l.label === "agent")?.amount);
+  });
+
+  it("does not add a surcharge line when driving stays within the included allowance", () => {
+    const config = { ...baseConfig, vehicleIncludedKmPerHour: 25, vehicleKmSurchargeRate: 2 };
+    const quote = computeQuote(
+      { serviceKey: "escort", agentCount: 1, hours: 3, km: 50, mobility: "protego_vehicle" },
+      config
+    );
+    expect(quote.lines.find((l) => l.label === "vehicle_km_surcharge")).toBeUndefined();
+  });
+});
+
+describe("computeQuote — Escort/Hourly platform fee scaling (2026-08-04)", () => {
+  it("stays at the flat platform fee up to ~4 hours", () => {
+    const config = { ...baseConfig, platformFeePerHour: 5 };
+    const quote = computeQuote({ serviceKey: "hourly", agentCount: 1, hours: 4, mobility: "on_foot" }, config);
+    // 5*4=20, matches the flat floor exactly
+    expect(quote.lines.find((l) => l.label === "platform_fee")?.amount).toBe(20);
+  });
+
+  it("scales past ~4 hours", () => {
+    const config = { ...baseConfig, platformFeePerHour: 5 };
+    const quote = computeQuote({ serviceKey: "hourly", agentCount: 1, hours: 8, mobility: "on_foot" }, config);
+    expect(quote.lines.find((l) => l.label === "platform_fee")?.amount).toBe(40);
+  });
+
+  it("stays flat for Protect Ride regardless of platformFeePerHour", () => {
+    const config = { ...baseConfig, platformFeePerHour: 5 };
+    const quote = computeQuote(
+      { serviceKey: "protect_ride", agentCount: 1, hours: 0, km: 15, mobility: "protego_vehicle" },
+      config
+    );
+    expect(quote.lines.find((l) => l.label === "platform_fee")?.amount).toBe(20);
   });
 });
 

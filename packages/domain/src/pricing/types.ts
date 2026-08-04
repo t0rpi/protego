@@ -30,7 +30,9 @@ export interface PricingConfig {
   waitFreeMinutes: number;
   waitPerMinuteRate: number | null;
   accompanyInsideFee: number | null;
-  /** Documents the flat-fee -> hourly-rate conversion rule past this many minutes; runtime enforcement (tracking actual accompany duration mid-mission) isn't built, only affects the booking-time quote today. */
+  /** 2026-08-04 — minutes covered by accompanyInsideFee before waitPerMinuteRate overage applies (reuses the wait rate, no separate rate). */
+  accompanyInsideIncludedMinutes: number;
+  /** Client-facing suggestion threshold only (past this, the UI suggests booking hourly Escort instead) — does not change the computation itself. */
   accompanyInsideHourlyThresholdMinutes: number;
   /** v2.3 §23 — floor on the agent's computed earnings. Confirmed for Protect Ride (35 lei) only; null elsewhere — not invented for Escort/Hourly. */
   agentMinimumPerMission: number | null;
@@ -39,6 +41,11 @@ export interface PricingConfig {
   cancellationFeeMinimum: number;
   /** v2.3 §23 — fraction of the labor component paid to the agent (0.55), never of the total. */
   agentSharePct: number;
+  /** 2026-08-04 founder decision — Escort/Hourly + protego_vehicle only: km of driving included per billed hour before vehicleKmSurchargeRate applies. Null elsewhere (Protect Ride uses perKm instead). */
+  vehicleIncludedKmPerHour: number | null;
+  vehicleKmSurchargeRate: number | null;
+  /** 2026-08-04 founder decision — Escort/Hourly only: platform fee is max(platformFee, platformFeePerHour * billed hours), so it scales past ~4h instead of staying flat. Null elsewhere (Protect Ride stays flat). */
+  platformFeePerHour: number | null;
 }
 
 export type ServiceKey = "protect_ride" | "escort" | "hourly";
@@ -55,8 +62,8 @@ export interface QuoteInput {
   isUrgent?: boolean;
   /** Protect Ride only — estimated wait time at the destination, in minutes. */
   waitMinutes?: number;
-  /** Protect Ride only — client opted in to the agent accompanying them inside the venue. */
-  accompanyInside?: boolean;
+  /** Protect Ride only — estimated duration for the agent to accompany the client inside a venue, in minutes. 0/undefined = not requested. */
+  accompanyMinutes?: number;
 }
 
 export interface QuoteLine {
@@ -73,7 +80,8 @@ export interface QuoteLine {
     | "overage"
     | "door_to_door_included"
     | "wait_at_destination"
-    | "accompany_inside";
+    | "accompany_inside"
+    | "vehicle_km_surcharge";
   amount: number;
 }
 

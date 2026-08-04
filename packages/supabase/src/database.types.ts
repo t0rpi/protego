@@ -646,7 +646,7 @@ export type Database = {
       }
       missions: {
         Row: {
-          accompany_inside_requested: boolean
+          accompany_inside_minutes: number | null
           agent_count: number
           agent_preference: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
@@ -675,7 +675,7 @@ export type Database = {
           wait_at_destination_minutes: number | null
         }
         Insert: {
-          accompany_inside_requested?: boolean
+          accompany_inside_minutes?: number | null
           agent_count?: number
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city: string
@@ -704,7 +704,7 @@ export type Database = {
           wait_at_destination_minutes?: number | null
         }
         Update: {
-          accompany_inside_requested?: boolean
+          accompany_inside_minutes?: number | null
           agent_count?: number
           agent_preference?: Database["public"]["Enums"]["mission_agent_preference"]
           city?: string
@@ -1006,6 +1006,7 @@ export type Database = {
         Row: {
           accompany_inside_fee: number | null
           accompany_inside_hourly_threshold_minutes: number
+          accompany_inside_included_minutes: number
           agent_minimum_per_mission: number | null
           agent_share_pct: number
           base: number
@@ -1029,15 +1030,19 @@ export type Database = {
           per_hour_vehicle: number
           per_km: number
           platform_fee: number
+          platform_fee_per_hour: number | null
           service_id: string
           updated_at: string
           vat_rate: number
+          vehicle_included_km_per_hour: number | null
+          vehicle_km_surcharge_rate: number | null
           wait_free_minutes: number
           wait_per_minute_rate: number | null
         }
         Insert: {
           accompany_inside_fee?: number | null
           accompany_inside_hourly_threshold_minutes?: number
+          accompany_inside_included_minutes?: number
           agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
@@ -1061,15 +1066,19 @@ export type Database = {
           per_hour_vehicle?: number
           per_km?: number
           platform_fee?: number
+          platform_fee_per_hour?: number | null
           service_id: string
           updated_at?: string
           vat_rate?: number
+          vehicle_included_km_per_hour?: number | null
+          vehicle_km_surcharge_rate?: number | null
           wait_free_minutes?: number
           wait_per_minute_rate?: number | null
         }
         Update: {
           accompany_inside_fee?: number | null
           accompany_inside_hourly_threshold_minutes?: number
+          accompany_inside_included_minutes?: number
           agent_minimum_per_mission?: number | null
           agent_share_pct?: number
           base?: number
@@ -1093,9 +1102,12 @@ export type Database = {
           per_hour_vehicle?: number
           per_km?: number
           platform_fee?: number
+          platform_fee_per_hour?: number | null
           service_id?: string
           updated_at?: string
           vat_rate?: number
+          vehicle_included_km_per_hour?: number | null
+          vehicle_km_surcharge_rate?: number | null
           wait_free_minutes?: number
           wait_per_minute_rate?: number | null
         }
@@ -1829,7 +1841,7 @@ export type Database = {
       }
       compute_quote: {
         Args: {
-          p_accompany_inside?: boolean
+          p_accompany_minutes?: number
           p_agent_count: number
           p_city: string
           p_hours: number

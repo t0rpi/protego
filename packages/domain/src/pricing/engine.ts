@@ -87,8 +87,14 @@ export function computeQuote(input: QuoteInput, config: PricingConfig): Quote {
       lines.push({ label: "wait_at_destination", amount: waitCost });
     }
 
-    if (input.accompanyInside) {
-      accompanyCost = config.accompanyInsideFee ?? 0;
+    if (input.accompanyMinutes && input.accompanyMinutes > 0) {
+      // 2026-08-04: flat fee covers the first accompanyInsideIncludedMinutes,
+      // then overage reuses waitPerMinuteRate (same rate as
+      // wait_at_destination — founder decision, no separate rate).
+      // accompanyInsideHourlyThresholdMinutes is a client-facing
+      // suggestion only and does not affect this computation.
+      const extraMinutes = Math.max(0, input.accompanyMinutes - config.accompanyInsideIncludedMinutes);
+      accompanyCost = round2((config.accompanyInsideFee ?? 0) + extraMinutes * (config.waitPerMinuteRate ?? 0));
       lines.push({ label: "accompany_inside", amount: accompanyCost });
     }
 
@@ -113,14 +119,32 @@ export function computeQuote(input: QuoteInput, config: PricingConfig): Quote {
     if (input.mobility === "protego_vehicle") {
       vehicleCost = round2(hours * config.perHourVehicle);
       lines.push({ label: "vehicle", amount: vehicleCost });
+
+      // 2026-08-04: km allowance + surcharge, own line, only when it
+      // actually applies.
+      if (config.vehicleIncludedKmPerHour !== null && config.vehicleKmSurchargeRate !== null && input.km) {
+        const includedKm = config.vehicleIncludedKmPerHour * hours;
+        if (input.km > includedKm) {
+          const kmSurcharge = round2((input.km - includedKm) * config.vehicleKmSurchargeRate);
+          vehicleCost = round2(vehicleCost + kmSurcharge);
+          lines.push({ label: "vehicle_km_surcharge", amount: kmSurcharge });
+        }
+      }
     } else if (input.mobility === "client_vehicle") {
       lines.push({ label: "client_vehicle", amount: 0 });
     }
   }
 
-  lines.push({ label: "platform_fee", amount: config.platformFee });
+  // 2026-08-04: Escort/Hourly platform fee scales past ~4h instead of
+  // staying flat (5*4=20, matches the flat floor exactly up to there);
+  // Protect Ride has no hours dimension and stays flat.
+  const platformFee =
+    input.serviceKey === "protect_ride"
+      ? config.platformFee
+      : Math.max(config.platformFee, (config.platformFeePerHour ?? 0) * Math.max(input.hours, config.minBillingHours));
+  lines.push({ label: "platform_fee", amount: platformFee });
 
-  const subtotal = laborComponent + vehicleCost + config.platformFee;
+  const subtotal = laborComponent + vehicleCost + platformFee;
   const vat = round2(subtotal * config.vatRate);
   lines.push({ label: "vat", amount: vat });
 
