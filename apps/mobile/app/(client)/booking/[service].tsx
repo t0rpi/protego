@@ -105,6 +105,7 @@ export default function BookingWizardScreen() {
   const [accompanyFee, setAccompanyFee] = useState<number | null>(null);
   const [accompanyIncludedMinutes, setAccompanyIncludedMinutes] = useState(15);
   const [accompanyHourlyThresholdMinutes, setAccompanyHourlyThresholdMinutes] = useState(45);
+  const [waitFreeMinutes, setWaitFreeMinutes] = useState(5);
   const [waitPerMinuteRate, setWaitPerMinuteRate] = useState<number | null>(null);
   const [vehicleIncludedKmPerHour, setVehicleIncludedKmPerHour] = useState<number | null>(null);
   const [vehicleKmSurchargeRate, setVehicleKmSurchargeRate] = useState<number | null>(null);
@@ -279,7 +280,7 @@ export default function BookingWizardScreen() {
     supabase
       .from("pricing_config")
       .select(
-        "accompany_inside_fee, accompany_inside_included_minutes, accompany_inside_hourly_threshold_minutes, wait_per_minute_rate, vehicle_included_km_per_hour, vehicle_km_surcharge_rate"
+        "accompany_inside_fee, accompany_inside_included_minutes, accompany_inside_hourly_threshold_minutes, wait_free_minutes, wait_per_minute_rate, vehicle_included_km_per_hour, vehicle_km_surcharge_rate"
       )
       .eq("service_id", serviceId)
       .eq("city", "Oradea")
@@ -289,6 +290,7 @@ export default function BookingWizardScreen() {
         setAccompanyFee(data.accompany_inside_fee);
         setAccompanyIncludedMinutes(data.accompany_inside_included_minutes);
         setAccompanyHourlyThresholdMinutes(data.accompany_inside_hourly_threshold_minutes);
+        setWaitFreeMinutes(data.wait_free_minutes);
         setWaitPerMinuteRate(data.wait_per_minute_rate);
         setVehicleIncludedKmPerHour(data.vehicle_included_km_per_hour);
         setVehicleKmSurchargeRate(data.vehicle_km_surcharge_rate);
@@ -701,6 +703,11 @@ export default function BookingWizardScreen() {
                 {waitAtDestination ? "☑" : "☐"} {t("booking.waitTitle")}
               </Text>
               <Text style={s.cardDesc}>{t("booking.waitDesc")}</Text>
+              {waitPerMinuteRate !== null ? (
+                <Text style={s.cardDesc}>
+                  {t("booking.waitRateNote", { included: waitFreeMinutes, rate: waitPerMinuteRate })}
+                </Text>
+              ) : null}
             </Pressable>
             {waitAtDestination ? (
               <View style={s.row}>
