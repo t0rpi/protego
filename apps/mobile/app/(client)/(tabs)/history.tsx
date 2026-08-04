@@ -30,36 +30,43 @@ export default function HistoryScreen() {
 
   const load = useCallback(async () => {
     if (!session) return;
-    const { data: rows } = await supabase
-      .from("missions")
-      .select("id, destination_address, pickup_address, created_at, services(key)")
-      .eq("client_id", session.user.id)
-      .eq("status", "done")
-      .order("created_at", { ascending: false });
+    // A rejected fetch here (network failure) would otherwise leave
+    // `missions` at `null` forever, stranding this screen on the loading
+    // spinner — same fix as the Home tab's profile fetch.
+    try {
+      const { data: rows } = await supabase
+        .from("missions")
+        .select("id, destination_address, pickup_address, created_at, services(key)")
+        .eq("client_id", session.user.id)
+        .eq("status", "done")
+        .order("created_at", { ascending: false });
 
-    const missionIds = (rows ?? []).map((row) => row.id);
-    const totalsByMission = new Map<string, number>();
-    if (missionIds.length > 0) {
-      const { data: quoteRows } = await supabase
-        .from("quotes")
-        .select("mission_id, total_estimate")
-        .in("mission_id", missionIds)
-        .eq("kind", "final");
-      for (const quote of quoteRows ?? []) {
-        totalsByMission.set(quote.mission_id, quote.total_estimate);
+      const missionIds = (rows ?? []).map((row) => row.id);
+      const totalsByMission = new Map<string, number>();
+      if (missionIds.length > 0) {
+        const { data: quoteRows } = await supabase
+          .from("quotes")
+          .select("mission_id, total_estimate")
+          .in("mission_id", missionIds)
+          .eq("kind", "final");
+        for (const quote of quoteRows ?? []) {
+          totalsByMission.set(quote.mission_id, quote.total_estimate);
+        }
       }
-    }
 
-    setMissions(
-      (rows ?? []).map((row) => ({
-        id: row.id,
-        destination_address: row.destination_address,
-        pickup_address: row.pickup_address,
-        created_at: row.created_at,
-        service_key: (row as unknown as { services: { key: string } | null }).services?.key ?? "",
-        total: totalsByMission.get(row.id) ?? null,
-      }))
-    );
+      setMissions(
+        (rows ?? []).map((row) => ({
+          id: row.id,
+          destination_address: row.destination_address,
+          pickup_address: row.pickup_address,
+          created_at: row.created_at,
+          service_key: (row as unknown as { services: { key: string } | null }).services?.key ?? "",
+          total: totalsByMission.get(row.id) ?? null,
+        }))
+      );
+    } catch {
+      setMissions([]);
+    }
   }, [session]);
 
   useEffect(() => {

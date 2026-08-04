@@ -30,18 +30,27 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!session) return;
+    // A rejected fetch here (network failure) would otherwise leave
+    // `profile` at `null` forever, stranding this screen on the loading
+    // spinner — same fix as the Home tab's profile fetch.
     supabase
       .from("profiles")
       .select("full_name, verification_level")
       .eq("id", session.user.id)
       .single()
-      .then(({ data }) => setProfile(data));
+      .then(
+        ({ data }) => setProfile(data),
+        () => setProfile({ full_name: null, verification_level: 1 })
+      );
 
     supabase
       .from("protected_persons")
       .select("id, full_name")
       .eq("owner_id", session.user.id)
-      .then(({ data }) => setPersons(data ?? []));
+      .then(
+        ({ data }) => setPersons(data ?? []),
+        () => setPersons([])
+      );
   }, [session]);
 
   if (!profile) {

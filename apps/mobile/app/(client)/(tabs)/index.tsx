@@ -27,12 +27,20 @@ export default function ClientHomeScreen() {
 
   useEffect(() => {
     if (!session) return;
+    // A rejected promise here (genuine network failure, not a Postgrest-
+    // level error — those resolve with {data: null, error} and were
+    // already handled) would otherwise leave `profile` at `undefined`
+    // forever, stranding this screen on the loading spinner with no way
+    // out. Any failure degrades to "no profile data" instead of hanging.
     supabase
       .from("profiles")
       .select("role, verification_level, full_name")
       .eq("id", session.user.id)
       .single()
-      .then(({ data }) => setProfile(data));
+      .then(
+        ({ data }) => setProfile(data),
+        () => setProfile(null)
+      );
   }, [session]);
 
   if (loading || profile === undefined) {

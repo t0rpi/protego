@@ -23,12 +23,18 @@ export default function AgentProfileScreen() {
 
   useEffect(() => {
     if (!session) return;
+    // A rejected fetch here (network failure) would otherwise leave
+    // `agent` at `null` forever, stranding this screen on the loading
+    // spinner — same fix as the client Home tab's profile fetch.
     supabase
       .from("agents")
       .select("status, rating")
       .eq("id", session.user.id)
       .single()
-      .then(({ data }) => setAgent(data));
+      .then(
+        ({ data }) => setAgent(data),
+        () => setAgent({ status: "unknown", rating: null })
+      );
   }, [session]);
 
   if (!agent) {
