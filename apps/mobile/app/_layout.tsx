@@ -2,6 +2,10 @@ import "../lib/i18n";
 import { Stack } from "expo-router";
 import { AuthProvider } from "../lib/auth-context";
 
+// TEMPORARY boot-stage diagnostic (2026-08-05) — pinpointing where a
+// device-reported Home-tab hang actually stalls; remove once resolved.
+console.log("[boot] root _layout.tsx module evaluated");
+
 /**
  * Root layout. M1 adds i18n init + auth session context, both consumed by
  * the (auth) screens. Font loading (Cinzel/Manrope) and the component
@@ -18,6 +22,7 @@ import { AuthProvider } from "../lib/auth-context";
  * payment actions require an EAS dev-client build.
  */
 export default function RootLayout() {
+  console.log("[boot] RootLayout render");
   return (
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }} />

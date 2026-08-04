@@ -12,6 +12,7 @@ import { tokens } from "@protego/ui";
  * pushed screens (unchanged), reachable from the Home tab.
  */
 export default function ClientTabsLayout() {
+  console.log("[boot] ClientTabsLayout render");
   const { t } = useTranslation();
 
   return (

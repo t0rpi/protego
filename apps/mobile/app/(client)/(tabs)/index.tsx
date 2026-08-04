@@ -25,7 +25,11 @@ export default function ClientHomeScreen() {
     { role: string; verification_level: number; full_name: string | null } | null | undefined
   >(undefined);
 
+  // TEMPORARY boot-stage diagnostic (2026-08-05) — remove once resolved.
+  console.log("[boot] ClientHomeScreen render", { loading, hasSession: Boolean(session), profile });
+
   useEffect(() => {
+    console.log("[boot] Home profile effect fired", { hasSession: Boolean(session) });
     if (!session) return;
     // A rejected promise here (genuine network failure, not a Postgrest-
     // level error — those resolve with {data: null, error} and were
@@ -38,12 +42,19 @@ export default function ClientHomeScreen() {
       .eq("id", session.user.id)
       .single()
       .then(
-        ({ data }) => setProfile(data),
-        () => setProfile(null)
+        (result) => {
+          console.log("[boot] Home profile fetch resolved", result);
+          setProfile(result.data);
+        },
+        (err) => {
+          console.log("[boot] Home profile fetch rejected", err);
+          setProfile(null);
+        }
       );
   }, [session]);
 
   if (loading || profile === undefined) {
+    console.log("[boot] Home showing loading spinner", { loading, profileIsUndefined: profile === undefined });
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={tokens.color.base.gold} />
