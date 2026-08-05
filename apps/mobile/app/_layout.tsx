@@ -1,10 +1,8 @@
 import "../lib/i18n";
+import { ActivityIndicator, View } from "react-native";
 import { Stack } from "expo-router";
-import { AuthProvider } from "../lib/auth-context";
-
-// TEMPORARY boot-stage diagnostic (2026-08-05) — pinpointing where a
-// device-reported Home-tab hang actually stalls; remove once resolved.
-console.log("[boot] root _layout.tsx module evaluated");
+import { tokens } from "@protego/ui";
+import { AuthProvider, useAuth } from "../lib/auth-context";
 
 /**
  * Root layout. M1 adds i18n init + auth session context, both consumed by
@@ -22,10 +20,58 @@ console.log("[boot] root _layout.tsx module evaluated");
  * payment actions require an EAS dev-client build.
  */
 export default function RootLayout() {
-  console.log("[boot] RootLayout render");
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <RootNavigator />
     </AuthProvider>
+  );
+}
+
+/**
+ * Auth gate (2026-08-05 fix — logout crash, "child already has a parent").
+ * Previously each authenticated screen (e.g. the Home tab) did its own
+ * `if (!session) return <Redirect href="/login" />` check. That's exactly
+ * the pattern Expo Router's own docs warn about: Tab navigators keep
+ * every tab screen mounted in the background (not just the focused one),
+ * so when `session` flips to null on sign-out, Home's background-mounted
+ * Redirect fires a router.replace() at the same moment React Navigation
+ * is already mid-transition from the sign-out button press — two
+ * competing native view-tree mutations in the same tick, which is what
+ * produced the native "child already has a parent" crash.
+ *
+ * `Stack.Protected` is Expo Router's own answer to this: only one guarded
+ * group is ever mounted at a time, and it owns the mount/unmount itself
+ * instead of leaving it to redirects scattered across leaf screens. This
+ * is the ONLY place session gating happens now — do not add another
+ * `<Redirect>` for "not logged in" anywhere else in the tree.
+ */
+function RootNavigator() {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tokens.color.semantic.surfaceApp,
+        }}
+      >
+        <ActivityIndicator color={tokens.color.base.gold} />
+      </View>
+    );
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={Boolean(session)}>
+        <Stack.Screen name="(client)" />
+        <Stack.Screen name="(agent)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
   );
 }

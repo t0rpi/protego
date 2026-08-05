@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { Redirect, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
@@ -154,16 +154,22 @@ export default function AgentHomeScreen() {
     setToggling(false);
   }
 
-  if (loading) {
+  // "No session" is no longer checked/redirected here (2026-08-05 logout
+  // crash fix — see apps/mobile/app/_layout.tsx's RootNavigator comment
+  // for the full explanation). This screen only ever mounts inside the
+  // root layout's `Stack.Protected guard={Boolean(session)}` group, which
+  // owns ALL session-based mounting exclusively now. Do not reintroduce
+  // a per-screen `<Redirect>` for "not logged in" — Tab navigators keep
+  // every tab screen mounted in the background, and a Redirect firing
+  // from an unfocused Home tab at the same moment as the sign-out
+  // transition is what caused the native "child already has a parent"
+  // crash in the first place.
+  if (loading || !session) {
     return (
       <View style={s.container}>
         <ActivityIndicator color="#C9A227" />
       </View>
     );
-  }
-
-  if (!session) {
-    return <Redirect href="/login" />;
   }
 
   return (

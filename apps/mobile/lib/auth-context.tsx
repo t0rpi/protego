@@ -15,8 +15,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TEMPORARY boot-stage diagnostic (2026-08-05) — remove once resolved.
-    console.log("[boot] AuthProvider effect start, calling getSession()");
     let settled = false;
     // getSession() reads the stored session locally, but if the stored
     // access token is expired it triggers a background refresh network
@@ -31,7 +29,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
-      console.log("[boot] getSession() timed out after 8s — treating as no session");
       setSession(null);
       setLoading(false);
     }, 8000);
@@ -43,22 +40,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
           if (settled) return;
           settled = true;
           clearTimeout(timeout);
-          console.log("[boot] getSession() resolved", { hasSession: Boolean(data.session) });
           setSession(data.session);
           setLoading(false);
         },
-        (err) => {
+        () => {
           if (settled) return;
           settled = true;
           clearTimeout(timeout);
-          console.log("[boot] getSession() rejected", err);
           setSession(null);
           setLoading(false);
         }
       );
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      console.log("[boot] onAuthStateChange", { hasSession: Boolean(newSession) });
       setSession(newSession);
     });
 

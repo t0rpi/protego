@@ -20,16 +20,12 @@ type ServiceKey = "protect_ride" | "escort" | "hourly";
 export default function ClientHomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { session, loading } = useAuth();
+  const { session } = useAuth();
   const [profile, setProfile] = useState<
     { role: string; verification_level: number; full_name: string | null } | null | undefined
   >(undefined);
 
-  // TEMPORARY boot-stage diagnostic (2026-08-05) — remove once resolved.
-  console.log("[boot] ClientHomeScreen render", { loading, hasSession: Boolean(session), profile });
-
   useEffect(() => {
-    console.log("[boot] Home profile effect fired", { hasSession: Boolean(session) });
     if (!session) return;
     // A rejected promise here (genuine network failure, not a Postgrest-
     // level error — those resolve with {data: null, error} and were
@@ -42,42 +38,23 @@ export default function ClientHomeScreen() {
       .eq("id", session.user.id)
       .single()
       .then(
-        (result) => {
-          console.log("[boot] Home profile fetch resolved", result);
-          setProfile(result.data);
-        },
-        (err) => {
-          console.log("[boot] Home profile fetch rejected", err);
-          setProfile(null);
-        }
+        (result) => setProfile(result.data),
+        () => setProfile(null)
       );
   }, [session]);
 
-  // Root cause of the reported permanent-spinner hang (2026-08-05, found
-  // via boot logs): this used to check `profile === undefined` in the
-  // SAME condition as `loading`, before checking `!session`. The profile
-  // fetch effect above does `if (!session) return;` — so when there's no
-  // session, `profile` never gets set and stays `undefined` forever,
-  // trapping a logged-out device on this spinner and never reaching the
-  // redirect-to-login below. Order matters: resolve auth loading first,
-  // then handle "no session" immediately, and only THEN wait on profile
-  // (which only ever matters once we know a session exists).
-  if (loading) {
-    console.log("[boot] Home showing loading spinner (auth loading)");
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={tokens.color.base.gold} />
-      </View>
-    );
-  }
-
-  if (!session) {
-    console.log("[boot] Home redirecting to /login (no session)");
-    return <Redirect href="/login" />;
-  }
+  // "No session" is no longer checked/redirected here (2026-08-05 logout
+  // crash fix) — this screen only ever mounts inside the root layout's
+  // `Stack.Protected guard={Boolean(session)}` group, which owns ALL
+  // session-based mounting/unmounting exclusively now. A per-screen
+  // `<Redirect>` here previously raced with the sign-out transition
+  // (Tab navigators keep every tab screen mounted in the background, so
+  // this Redirect could fire from an unfocused Home at the same moment
+  // React Navigation was already mid-transition) and produced a native
+  // "child already has a parent" crash. Do not reintroduce that check.
+  if (!session) return null;
 
   if (profile === undefined) {
-    console.log("[boot] Home showing loading spinner (profile fetch in flight)");
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={tokens.color.base.gold} />
