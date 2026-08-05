@@ -82,6 +82,15 @@ export default function OtpScreen() {
       <Pressable style={authStyles.linkRow} onPress={handleResend}>
         <Text style={authStyles.linkText}>{t("auth.otpResend", { time: "60s" })}</Text>
       </Pressable>
+
+      {/* 2026-08-06 fix — this screen was a dead end if the SMS never
+          arrives (e.g. no SMS provider configured on a given project):
+          no way back to login/register, no way out at all. router.back()
+          returns to whichever screen pushed this one (login or register
+          both do). */}
+      <Pressable style={authStyles.linkRow} onPress={() => router.back()}>
+        <Text style={[authStyles.linkText, { opacity: 0.7 }]}>{t("common.back")}</Text>
+      </Pressable>
     </View>
   );
 }
