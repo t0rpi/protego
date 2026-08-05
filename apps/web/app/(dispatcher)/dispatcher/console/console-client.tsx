@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rankAgentSuggestions, SOS_PROTOCOL_STEPS, type AgentSuggestionInput } from "@protego/domain";
 import { createClient } from "../../../../lib/supabase/client";
 
@@ -13,11 +13,74 @@ const TAB_LABEL: Record<Tab, string> = {
   handover: "Predare tură",
 };
 
+/**
+ * Dispatcher-5 fix (2026-08-05): "audible alert on new mission/SOS
+ * arrival — dispatchers don't stare at the screen." No audio asset to
+ * host/bundle — a short beep is generated procedurally via the Web
+ * Audio API. `urgent` (SOS) uses a higher pitch + a second pulse so it
+ * reads as more alarming than a routine new-mission chime.
+ */
+function playAlertBeep(urgent = false) {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioContextClass();
+    const beep = (delayMs: number, freq: number) => {
+      setTimeout(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }, delayMs);
+    };
+    beep(0, urgent ? 1046 : 784);
+    if (urgent) beep(400, 1046);
+  } catch {
+    // Best-effort — a blocked/unavailable AudioContext (e.g. before any
+    // user gesture on the page) is not a reason to break the console.
+  }
+}
+
+/** Dispatcher-2 fix: "waiting since / X min ago" per queue/alert row. */
+function formatElapsed(createdAt: string, now: Date): string {
+  const mins = Math.max(0, Math.floor((now.getTime() - new Date(createdAt).getTime()) / 60000));
+  if (mins < 1) return "chiar acum";
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}min`;
+}
+
 export function ConsoleClient() {
   const [tab, setTab] = useState<Tab>("map");
+  const [now, setNow] = useState(() => new Date());
+  const [dispatcherName, setDispatcherName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).single();
+      setDispatcherName(profile?.full_name ?? data.user.email ?? null);
+    });
+  }, []);
 
   return (
     <main className="min-h-screen p-6 text-[var(--text-primary)]">
+      <div className="mb-3 flex items-center justify-between text-sm text-[var(--text-secondary)]">
+        <span>{dispatcherName ? `Dispecer: ${dispatcherName}` : null}</span>
+        <span className="font-mono text-base text-[var(--text-primary)]">
+          {now.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </span>
+      </div>
       <nav className="mb-6 flex gap-2 border-b border-[var(--border)] pb-3">
         {(Object.keys(TAB_LABEL) as Tab[]).map((key) => (
           <button
@@ -62,6 +125,23 @@ interface QueueRow {
 
 interface AgentOption extends AgentSuggestionInput {
   full_name: string | null;
+  is_available: boolean;
+}
+
+interface QueueDetail {
+  pickup_address: string | null;
+  destination_address: string | null;
+  distance_km: number | null;
+  scheduled_at: string | null;
+  agent_preference: string | null;
+  dress_code: string | null;
+  mobility: string | null;
+  context_threat_known: boolean;
+  context_kind: string | null;
+  context_details: string | null;
+  client_name: string | null;
+  verification_level: number | null;
+  quote_total: number | null;
 }
 
 function MapQueueTab() {
@@ -72,6 +152,53 @@ function MapQueueTab() {
   const [selectedAgent, setSelectedAgent] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<QueueDetail | null>(null);
+  const knownQueueIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function openDetail(missionId: string) {
+    setDetailId(missionId);
+    setDetail(null);
+    const { data: m } = await supabase
+      .from("missions")
+      .select(
+        "pickup_address, destination_address, distance_km, scheduled_at, agent_preference, dress_code, mobility, context_threat_known, context_kind, context_details, client_id"
+      )
+      .eq("id", missionId)
+      .single();
+    if (!m) return;
+    const [{ data: profile }, { data: quote }] = await Promise.all([
+      supabase.from("profiles").select("full_name, verification_level").eq("id", m.client_id).single(),
+      supabase
+        .from("quotes")
+        .select("total_estimate")
+        .eq("mission_id", missionId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    setDetail({
+      pickup_address: m.pickup_address,
+      destination_address: m.destination_address,
+      distance_km: m.distance_km,
+      scheduled_at: m.scheduled_at,
+      agent_preference: m.agent_preference,
+      dress_code: m.dress_code,
+      mobility: m.mobility,
+      context_threat_known: m.context_threat_known,
+      context_kind: m.context_kind,
+      context_details: m.context_details,
+      client_name: profile?.full_name ?? null,
+      verification_level: profile?.verification_level ?? null,
+      quote_total: quote?.total_estimate ?? null,
+    });
+  }
 
   async function load() {
     const { data: activeMissions } = await supabase
@@ -116,22 +243,32 @@ function MapQueueTab() {
       .gt("expires_at", new Date().toISOString());
     const pendingIds = new Set((pendingOffers ?? []).map((o) => o.mission_id));
 
-    setQueue(
-      (missions ?? []).map((row) => ({
-        id: row.id,
-        service_key: (row as unknown as { services: { key: string } }).services.key,
-        city: row.city,
-        elevated_priority: row.elevated_priority,
-        created_at: row.created_at,
-        has_pending_offer: pendingIds.has(row.id),
-      }))
-    );
+    const newQueue: QueueRow[] = (missions ?? []).map((row) => ({
+      id: row.id,
+      service_key: (row as unknown as { services: { key: string } }).services.key,
+      city: row.city,
+      elevated_priority: row.elevated_priority,
+      created_at: row.created_at,
+      has_pending_offer: pendingIds.has(row.id),
+    }));
+    // Dispatcher-5: alert on a genuinely NEW queue arrival, never on the
+    // first load of this tab (knownQueueIds starts null specifically so
+    // that first load can be distinguished from "queue really is empty").
+    if (knownQueueIds.current !== null) {
+      const isNew = newQueue.some((row) => !knownQueueIds.current!.has(row.id));
+      if (isNew) playAlertBeep(false);
+    }
+    knownQueueIds.current = new Set(newQueue.map((row) => row.id));
+    setQueue(newQueue);
 
+    // Dispatcher-4: show the full active roster (not just currently-free
+    // agents) with a visible availability status, so the dispatcher can
+    // see who's on shift but busy — rather than agents silently vanishing
+    // from the list the moment they're on a mission.
     const { data: agentRows } = await supabase
       .from("agents")
-      .select("id, rating, badges, profiles(full_name)")
-      .eq("status", "active")
-      .eq("is_available", true);
+      .select("id, rating, badges, is_available, profiles(full_name)")
+      .eq("status", "active");
     setAgents(
       (agentRows ?? []).map((row) => {
         const badges = Array.isArray(row.badges) ? (row.badges as string[]) : [];
@@ -141,6 +278,7 @@ function MapQueueTab() {
           rating: row.rating,
           badgeCount: badges.length,
           hasVehicle: badges.includes("vehicle"),
+          is_available: row.is_available,
         };
       })
     );
@@ -149,6 +287,12 @@ function MapQueueTab() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    // Dispatcher-2/5: the console had no periodic refresh at all before —
+    // "waiting since" timestamps need fresh data to stay meaningful, and
+    // the audible-alert diff above only has something to compare against
+    // if the queue actually gets re-fetched.
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -221,6 +365,7 @@ function MapQueueTab() {
             <tr className="border-b border-[var(--border)] text-left">
               <th className="py-2">Serviciu</th>
               <th className="py-2">Oraș</th>
+              <th className="py-2">Așteaptă de la</th>
               <th className="py-2">Prioritate</th>
               <th className="py-2">Sugestii ordonate — distanță · rating · badge · vehicul</th>
               <th className="py-2"></th>
@@ -228,9 +373,16 @@ function MapQueueTab() {
           </thead>
           <tbody>
             {queue.map((row) => (
-              <tr key={row.id} className="border-b border-[var(--border)]">
+              <tr
+                key={row.id}
+                className="cursor-pointer border-b border-[var(--border)] hover:bg-[var(--surface-card)]"
+                onClick={() => openDetail(row.id)}
+              >
                 <td className="py-2">{row.service_key}</td>
                 <td className="py-2">{row.city}</td>
+                <td className="py-2 text-xs text-[var(--text-secondary)]">
+                  {formatElapsed(row.created_at, now)}
+                </td>
                 <td className="py-2">
                   {row.elevated_priority ? (
                     <span className="rounded-full bg-[var(--danger)] px-3 py-1 text-xs font-semibold text-white">
@@ -238,7 +390,7 @@ function MapQueueTab() {
                     </span>
                   ) : null}
                 </td>
-                <td className="py-2">
+                <td className="py-2" onClick={(e) => e.stopPropagation()}>
                   <select
                     className="rounded border border-[var(--border)] bg-[var(--surface-card)] px-2 py-1"
                     value={selectedAgent[row.id] ?? ""}
@@ -246,14 +398,14 @@ function MapQueueTab() {
                   >
                     <option value="">— alege agent —</option>
                     {ranked.map((a) => (
-                      <option key={a.agentId} value={a.agentId}>
+                      <option key={a.agentId} value={a.agentId} disabled={!a.is_available}>
                         {a.full_name ?? a.agentId} · ★{a.rating ?? "—"} · {a.badgeCount} badge-uri
-                        {a.hasVehicle ? " · vehicul" : ""}
+                        {a.hasVehicle ? " · vehicul" : ""} · {a.is_available ? "disponibil" : "ocupat"}
                       </option>
                     ))}
                   </select>
                 </td>
-                <td className="py-2">
+                <td className="py-2" onClick={(e) => e.stopPropagation()}>
                   {row.has_pending_offer ? (
                     <span className="text-xs text-[var(--text-secondary)]">ofertă în curs</span>
                   ) : (
@@ -272,9 +424,71 @@ function MapQueueTab() {
         </table>
         <p className="mt-2 text-xs text-[var(--text-secondary)]">
           Distanța nu este încă disponibilă (nicio poziție agent înainte de asignare) — sugestiile se bazează pe
-          rating, badge-uri și vehicul.
+          rating, badge-uri și vehicul. Atinge un rând pentru detalii complete ale misiunii.
         </p>
       </section>
+
+      {detailId ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
+          onClick={() => setDetailId(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-card)] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Detalii misiune</h3>
+              <button onClick={() => setDetailId(null)} className="text-[var(--text-secondary)]">
+                ✕
+              </button>
+            </div>
+            {!detail ? (
+              <p className="text-sm text-[var(--text-secondary)]">Se încarcă…</p>
+            ) : (
+              <div className="flex flex-col gap-2 text-sm">
+                <p>
+                  <span className="text-[var(--text-secondary)]">Client:</span>{" "}
+                  {detail.client_name ?? "—"} · nivel verificare {detail.verification_level ?? "?"}
+                </p>
+                <p>
+                  <span className="text-[var(--text-secondary)]">Preluare:</span> {detail.pickup_address ?? "—"}
+                </p>
+                {detail.destination_address ? (
+                  <p>
+                    <span className="text-[var(--text-secondary)]">Destinație:</span> {detail.destination_address}
+                    {detail.distance_km ? ` · ${detail.distance_km} km` : ""}
+                  </p>
+                ) : null}
+                <p>
+                  <span className="text-[var(--text-secondary)]">Preț estimat:</span>{" "}
+                  {detail.quote_total !== null ? `${detail.quote_total} lei` : "—"}
+                </p>
+                <p>
+                  <span className="text-[var(--text-secondary)]">Programare:</span>{" "}
+                  {detail.scheduled_at ? new Date(detail.scheduled_at).toLocaleString("ro-RO") : "acum"}
+                </p>
+                <p>
+                  <span className="text-[var(--text-secondary)]">Mobilitate:</span> {detail.mobility ?? "—"} ·{" "}
+                  <span className="text-[var(--text-secondary)]">Ținută:</span> {detail.dress_code ?? "—"} ·{" "}
+                  <span className="text-[var(--text-secondary)]">Preferință agent:</span>{" "}
+                  {detail.agent_preference ?? "—"}
+                </p>
+                <p>
+                  <span className="text-[var(--text-secondary)]">Context:</span>{" "}
+                  {detail.context_threat_known ? "amenințare cunoscută" : "context uzual"}
+                  {detail.context_kind ? ` · ${detail.context_kind}` : ""}
+                </p>
+                {detail.context_details ? (
+                  <p className="rounded border border-[var(--border)] p-2 text-xs text-[var(--text-secondary)]">
+                    {detail.context_details}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -302,6 +516,13 @@ function SosTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [journalDraft, setJournalDraft] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const knownEventIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function load() {
     const { data } = await supabase
@@ -309,7 +530,16 @@ function SosTab() {
       .select("id, source, event_type, status, mission_id, lat, lng, protocol_steps, journal, created_at")
       .in("status", ["open", "acknowledged"])
       .order("created_at", { ascending: false });
-    setEvents((data ?? []) as unknown as SosEventRow[]);
+    const rows = (data ?? []) as unknown as SosEventRow[];
+    // Dispatcher-5: SOS is the one place a dispatcher must never miss a
+    // new arrival — same first-load guard as the queue tab, plus a
+    // louder/urgent tone.
+    if (knownEventIds.current !== null) {
+      const isNew = rows.some((row) => !knownEventIds.current!.has(row.id));
+      if (isNew) playAlertBeep(true);
+    }
+    knownEventIds.current = new Set(rows.map((row) => row.id));
+    setEvents(rows);
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -324,6 +554,8 @@ function SosTab() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -392,6 +624,8 @@ function SosTab() {
               >
                 <span className="font-semibold text-[var(--danger)]">{event.event_type}</span> · {event.status}
                 {event.mission_id ? ` · Misiune #${event.mission_id.slice(0, 8)}` : " · Shield · utilizator gratuit"}
+                <br />
+                <span className="text-xs text-[var(--text-secondary)]">de {formatElapsed(event.created_at, now)}</span>
               </button>
             </li>
           ))}
