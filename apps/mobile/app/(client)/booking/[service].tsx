@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@protego/supabase";
 import { Button, QuoteBox, tokens } from "@protego/ui";
@@ -314,6 +314,24 @@ export default function BookingWizardScreen() {
       cancelled = true;
     };
   }, [step, gpsStatus, pickupAddress, pickupPlaceId]);
+
+  // Client-7 fix (2026-08-05): "GPS prefill only works once per session —
+  // complete a booking, return to Home, enter another service, pickup no
+  // longer auto-fills." gpsStatus flips away from "idle" the first time
+  // the effect above resolves and never resets itself, so if this screen
+  // is ever revisited for a fresh booking without a full unmount (Expo
+  // Router dynamic routes can reuse the mounted [service] screen instance
+  // across param changes), the guard silently skips forever after the
+  // first visit. Re-arm it on every focus of the "where" step, as long as
+  // the client hasn't already typed/picked their own address — same
+  // never-overwrite invariant as the effect above.
+  useFocusEffect(
+    useCallback(() => {
+      if (step === "where" && !pickupAddress && !pickupPlaceId) {
+        setGpsStatus("idle");
+      }
+    }, [step, pickupAddress, pickupPlaceId])
+  );
 
   useEffect(() => {
     if (!session) return;
