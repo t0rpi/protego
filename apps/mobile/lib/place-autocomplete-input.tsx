@@ -18,6 +18,10 @@ interface PlaceAutocompleteInputProps {
    * confirmation banner stays hidden. */
   isConfirmed: boolean;
   placeholder?: string;
+  /** Client-6: lets a caller intercept focus to prompt for a disabled
+   * GPS/permission state before the keyboard comes up — never blocks
+   * typing, just fires alongside the normal focus behavior. */
+  onFocus?: () => void;
 }
 
 /**
@@ -45,6 +49,7 @@ export function PlaceAutocompleteInput({
   onSelect,
   isConfirmed,
   placeholder,
+  onFocus,
 }: PlaceAutocompleteInputProps) {
   const { t } = useTranslation();
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -103,6 +108,7 @@ export function PlaceAutocompleteInput({
         style={s.input}
         value={value}
         onChangeText={onChangeText}
+        onFocus={onFocus}
         placeholder={placeholder}
         placeholderTextColor="#6B7178"
       />

@@ -1,3 +1,4 @@
+import { Linking, Platform } from "react-native";
 import { reverseGeocode } from "./places";
 
 export type PickupLocationResult =
@@ -69,5 +70,33 @@ export async function getCurrentPickupLocation(): Promise<PickupLocationResult> 
     return { status: "ok", formattedAddress: geocoded.formatted_address, placeId: geocoded.place_id };
   } catch {
     return { status: "unavailable" };
+  }
+}
+
+/**
+ * Client-6 fix (2026-08-05): "when location is OFF, the address field
+ * just says location is disabled — instead, tapping the field should
+ * PROMPT to enable GPS (system dialog / settings link)." Android has a
+ * real native "turn on location?" dialog (enableNetworkProviderAsync) —
+ * iOS has no equivalent (Apple doesn't let apps toggle system location),
+ * so the only option there is deep-linking to the app's own Settings
+ * page. Never throws — a declined prompt or unsupported platform is not
+ * a reason to block manual address entry.
+ */
+export async function promptEnableLocation(): Promise<void> {
+  const Location = loadLocationModule();
+  if (Platform.OS === "android" && Location) {
+    try {
+      await Location.enableNetworkProviderAsync();
+      return;
+    } catch {
+      // User declined the native dialog, or the device doesn't support
+      // it — fall through to Settings below.
+    }
+  }
+  try {
+    await Linking.openSettings();
+  } catch {
+    // Nothing more we can do — the client can still type the address.
   }
 }

@@ -10,7 +10,7 @@ import { bookingStyles as s } from "../../../lib/booking-styles";
 import { PaymentStep } from "../../../lib/payment-step";
 import { PlaceAutocompleteInput } from "../../../lib/place-autocomplete-input";
 import { computeRouteDistanceKm, type PlacePrediction } from "../../../lib/places";
-import { getCurrentPickupLocation } from "../../../lib/gps-location";
+import { getCurrentPickupLocation, promptEnableLocation } from "../../../lib/gps-location";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 type Mobility = Database["public"]["Enums"]["mission_mobility"];
@@ -333,6 +333,17 @@ export default function BookingWizardScreen() {
     }, [step, pickupAddress, pickupPlaceId])
   );
 
+  // Client-6 fix (2026-08-05): "when location is OFF, the address field
+  // just says location is disabled — instead, tapping the field should
+  // PROMPT to enable GPS". Fires on focus, never blocks typing — after
+  // the prompt (or if the client dismisses it), gpsStatus resets to
+  // "idle" so the existing prefill effect gets one more real attempt.
+  function handlePickupFocus() {
+    if (pickupAddress || pickupPlaceId) return;
+    if (gpsStatus !== "services_disabled" && gpsStatus !== "permission_denied") return;
+    promptEnableLocation().then(() => setGpsStatus("idle"));
+  }
+
   useEffect(() => {
     if (!session) return;
     supabase
@@ -578,9 +589,14 @@ export default function BookingWizardScreen() {
                   setPickupAddress(prediction.description);
                   setPickupPlaceId(prediction.place_id);
                 }}
+                onFocus={handlePickupFocus}
               />
-              {gpsStatus === "services_disabled" ? (
-                <Text style={s.note}>{t("booking.locationDisabledHint")}</Text>
+              {gpsStatus === "services_disabled" || gpsStatus === "permission_denied" ? (
+                <Pressable onPress={handlePickupFocus}>
+                  <Text style={[s.note, { textDecorationLine: "underline" }]}>
+                    {t(gpsStatus === "services_disabled" ? "booking.locationDisabledHint" : "booking.locationPermissionHint")}
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
             {isRide ? (

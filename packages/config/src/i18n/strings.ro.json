@@ -140,7 +140,8 @@
   "booking": {
     "route": "Traseu",
     "pickupPh": "De unde te preluăm?",
-    "locationDisabledHint": "Locația e dezactivată — activeaz-o din setările telefonului pentru completare automată, sau introdu adresa manual.",
+    "locationDisabledHint": "Locația e dezactivată — atinge aici pentru a o activa, sau introdu adresa manual.",
+    "locationPermissionHint": "PROTEGO nu are acces la locație — atinge aici pentru a deschide setările, sau introdu adresa manual.",
     "destPh": "Destinația",
     "distanceCalculating": "Se calculează distanța...",
     "distanceComputed": "Distanță: {{km}} km",
