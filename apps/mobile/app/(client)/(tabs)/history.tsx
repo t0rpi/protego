@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Button, Card, StatusPill, tokens } from "@protego/ui";
@@ -27,6 +27,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const [missions, setMissions] = useState<HistoryMission[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -80,9 +81,25 @@ export default function HistoryScreen() {
     }, [load])
   );
 
+  // Client-8 fix (2026-08-05): "a 'refresh' gesture at the top of the
+  // screen makes the image jump/slide but nothing actually refreshes" —
+  // no RefreshControl was ever wired anywhere in the app, so pulling
+  // down only ever triggered the ScrollView's default overscroll bounce.
+  // History already has refetchable server data via `load`.
+  async function onRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.color.base.gold} />
+        }
+      >
         <Text style={styles.title}>{t("history.title")}</Text>
 
         {missions === null ? (

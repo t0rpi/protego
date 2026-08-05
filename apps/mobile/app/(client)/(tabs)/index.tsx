@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Button, Card, tokens } from "@protego/ui";
@@ -24,15 +24,16 @@ export default function ClientHomeScreen() {
   const [profile, setProfile] = useState<
     { role: string; verification_level: number; full_name: string | null } | null | undefined
   >(undefined);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const loadProfile = useCallback(async () => {
     if (!session) return;
     // A rejected promise here (genuine network failure, not a Postgrest-
     // level error — those resolve with {data: null, error} and were
     // already handled) would otherwise leave `profile` at `undefined`
     // forever, stranding this screen on the loading spinner with no way
     // out. Any failure degrades to "no profile data" instead of hanging.
-    supabase
+    await supabase
       .from("profiles")
       .select("role, verification_level, full_name")
       .eq("id", session.user.id)
@@ -42,6 +43,22 @@ export default function ClientHomeScreen() {
         () => setProfile(null)
       );
   }, [session]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  // Client-8 fix (2026-08-05): "a 'refresh' gesture at the top of the
+  // screen makes the image jump/slide but nothing actually refreshes" —
+  // this was the plain ScrollView's default overscroll bounce (no
+  // RefreshControl was ever wired anywhere in the app). Wired here for
+  // real since Home already has refetchable server data (profile /
+  // verification level).
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  }
 
   // "No session" is no longer checked/redirected here (2026-08-05 logout
   // crash fix) — this screen only ever mounts inside the root layout's
@@ -74,7 +91,12 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.color.base.gold} />
+        }
+      >
         <Text style={styles.greeting}>
           {t("home.greetingEvening", { name: profile?.full_name ?? "" })}
         </Text>
