@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@protego/supabase";
-import { Button, QuoteBox } from "@protego/ui";
+import { Button, QuoteBox, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
@@ -198,6 +198,32 @@ export default function BookingWizardScreen() {
   const [quoteTotal, setQuoteTotal] = useState<number | null>(null);
   const [riskLevel, setRiskLevel] = useState<"normal" | "high" | null>(null);
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [reviewDeclined, setReviewDeclined] = useState(false);
+
+  // Dispatcher-1 fix (2026-08-05): a high-risk mission sits on this
+  // "result" screen in status 'review' until a dispatcher calls the
+  // client and approves/declines from the console
+  // (apps/web .../console-client.tsx confirmMission/declineMission).
+  // That console action is a raw `missions.update()`, not a push — and
+  // this screen previously had no way to notice the change short of the
+  // client force-quitting and reopening the app. Poll the same way
+  // lib/payment-step.tsx already does for the Stripe-webhook gap, just
+  // over a longer window since a dispatcher callback can take minutes,
+  // not seconds.
+  useEffect(() => {
+    if (step !== "result" || riskLevel !== "high" || !missionId) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from("missions").select("status").eq("id", missionId).single();
+      if (data?.status === "confirmed") {
+        clearInterval(interval);
+        router.push(`/mission/${missionId}`);
+      } else if (data?.status === "cancelled_dispatcher") {
+        clearInterval(interval);
+        setReviewDeclined(true);
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [step, riskLevel, missionId, router]);
 
   useEffect(() => {
     if (!session || missionId) return;
@@ -477,12 +503,20 @@ export default function BookingWizardScreen() {
       <View style={s.container}>
         <ScrollView contentContainerStyle={s.scroll}>
           {riskLevel === "high" ? (
-            <>
-              <Text style={s.reviewPill}>{t("review.pill")}</Text>
-              <Text style={s.title}>{t("review.headline")}</Text>
-              <Text style={s.intro}>{t("review.body", { min: 15 })}</Text>
-              <Text style={s.note}>{t("review.nothingCharged")}</Text>
-            </>
+            reviewDeclined ? (
+              <>
+                <Text style={s.title}>{t("review.declinedTitle")}</Text>
+                <Text style={s.intro}>{t("review.declinedBody")}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.reviewPill}>{t("review.pill")}</Text>
+                <Text style={s.title}>{t("review.headline")}</Text>
+                <Text style={s.intro}>{t("review.body", { min: 15 })}</Text>
+                <Text style={s.note}>{t("review.nothingCharged")}</Text>
+                <ActivityIndicator color={tokens.color.base.gold} style={{ marginTop: 12 }} />
+              </>
+            )
           ) : (
             <>
               <Text style={s.title}>{t("pay.done")}</Text>

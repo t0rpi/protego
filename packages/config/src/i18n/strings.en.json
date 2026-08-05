@@ -263,7 +263,9 @@
     "nothingCharged": "nothing has been held yet",
     "dispatcherCalls": "{{name}} · will call you",
     "status": "under review",
-    "backHome": "Back home — we'll let you know"
+    "backHome": "Back home — we'll let you know",
+    "declinedTitle": "Mission not confirmed",
+    "declinedBody": "A dispatcher reviewed your request and could not confirm this mission. Nothing was charged. Contact us for details or try a new booking."
   },
   "agentAssigned": {
     "title": "Agent confirmed",

@@ -263,7 +263,9 @@
     "nothingCharged": "nu s-a blocat încă nimic",
     "dispatcherCalls": "{{name}} · te sună",
     "status": "în verificare",
-    "backHome": "Înapoi acasă — te anunțăm noi"
+    "backHome": "Înapoi acasă — te anunțăm noi",
+    "declinedTitle": "Misiune neconfirmată",
+    "declinedBody": "Un dispecer a analizat cererea ta și nu a putut confirma această misiune. Nu s-a blocat nimic. Contactează-ne dacă vrei detalii sau încearcă o nouă rezervare."
   },
   "agentAssigned": {
     "title": "Agent confirmat",
