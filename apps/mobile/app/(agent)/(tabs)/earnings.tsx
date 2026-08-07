@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { CardSkeleton } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
@@ -41,9 +42,13 @@ export default function EarningsScreen() {
   }, [session]);
 
   if (!rows) {
+    // P2i QA fix: was a bare spinner on a blank screen for up to ~6s.
     return (
       <View style={s.container}>
-        <ActivityIndicator color="#C9A227" />
+        <ScrollView contentContainerStyle={s.scroll}>
+          <CardSkeleton />
+          <CardSkeleton />
+        </ScrollView>
       </View>
     );
   }

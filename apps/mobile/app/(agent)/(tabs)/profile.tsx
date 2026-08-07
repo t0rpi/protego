@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Card, tokens } from "@protego/ui";
+import { Badge, Button, Card, CardSkeleton, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 
@@ -39,9 +39,12 @@ export default function AgentProfileScreen() {
   }, [session]);
 
   if (!agent) {
+    // P2i QA fix: was a bare spinner on a blank screen for up to ~6s.
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={tokens.color.base.gold} />
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <CardSkeleton />
+        </ScrollView>
       </View>
     );
   }

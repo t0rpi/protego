@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Button, Card, StatusPill, tokens } from "@protego/ui";
+import { Button, Card, CardSkeleton, StatusPill, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { ACTIVE_MISSION_STATUSES } from "../../../lib/mission-status";
@@ -203,7 +203,10 @@ export default function HistoryScreen() {
         ) : null}
 
         {missions === null ? (
-          <ActivityIndicator color={tokens.color.base.gold} />
+          <>
+            <CardSkeleton />
+            <CardSkeleton />
+          </>
         ) : missions.length === 0 ? (
           <Card>
             <Text style={styles.emptyTitle}>{t("history.emptyTitle")}</Text>

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { CardSkeleton } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
@@ -185,9 +186,13 @@ export default function AgentHomeScreen() {
   // transition is what caused the native "child already has a parent"
   // crash in the first place.
   if (loading || !session) {
+    // P2i QA fix: was a bare spinner on a blank screen for up to ~6s.
     return (
       <View style={s.container}>
-        <ActivityIndicator color="#C9A227" />
+        <ScrollView contentContainerStyle={s.scroll}>
+          <CardSkeleton />
+          <CardSkeleton />
+        </ScrollView>
       </View>
     );
   }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Button, Card, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
+import { Button, Card, CardSkeleton, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { ACTIVE_MISSION_STATUSES } from "../../../lib/mission-status";
@@ -93,9 +93,15 @@ export default function ClientHomeScreen() {
   if (!session) return null;
 
   if (profile === undefined) {
+    // P2i QA fix: a bare spinner on an otherwise blank screen for up to
+    // ~6s on a cold tab switch read as broken — these give the loading
+    // state a shape instead of nothing.
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={tokens.color.base.gold} />
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <CardSkeleton />
+          <CardSkeleton />
+        </ScrollView>
       </View>
     );
   }
