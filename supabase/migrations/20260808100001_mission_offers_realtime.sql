@@ -1,0 +1,22 @@
+-- P2b QA fix (founder, 2026-08-08): "Agent offer arrives already expired
+-- (0s)". Root cause, confirmed by reading the actual code: the agent app
+-- has NO realtime subscription anywhere (grepped the whole apps/mobile
+-- tree for `.channel(` — zero matches) and mission_offers was never
+-- added to the supabase_realtime publication either (grepped every
+-- migration for it — zero matches, despite M4-era comments in
+-- 20260731120001_mission_tracking.sql planning to use Realtime
+-- Broadcast for position updates, that plan was never actually wired
+-- up). agent.tsx's Home screen only discovers a pending offer via
+-- useFocusEffect — i.e. only when the agent happens to (re)focus the
+-- Home tab. Since an offer's whole window is 45 seconds
+-- (mission_offers.expires_at default), any discovery delay longer than
+-- that — the agent on another tab, phone locked, or just not looking at
+-- Home at that exact moment — means the offer is already expired by the
+-- time they see it. This migration adds mission_offers to Postgres
+-- change broadcasts so the mobile app (next commit) can subscribe and
+-- learn about a new/updated offer immediately instead of waiting for a
+-- tab focus. Safe to expose broadly: the table already has RLS enabled
+-- with "agent can read own offers" (agent_id = auth.uid()), which
+-- Realtime's postgres_changes respects — an agent only ever receives
+-- change events for rows they could already SELECT directly.
+alter publication supabase_realtime add table public.mission_offers;

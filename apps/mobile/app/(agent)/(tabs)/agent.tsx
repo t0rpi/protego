@@ -141,6 +141,26 @@ export default function AgentHomeScreen() {
     }, [load])
   );
 
+  useEffect(() => {
+    // P2b QA fix: without this, a new offer was only ever discovered on
+    // the next Home-tab focus — since an offer's whole window is 45s,
+    // that discovery delay alone was enough to make it arrive already
+    // expired. Realtime pushes the refetch the instant mission_offers
+    // changes for this agent, while the app is actually open on Home.
+    if (!session) return;
+    const channel = supabase
+      .channel(`agent-offers-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mission_offers", filter: `agent_id=eq.${session.user.id}` },
+        () => load()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, load]);
+
   async function toggleAvailability() {
     if (!session || !agent) return;
     setToggling(true);

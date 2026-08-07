@@ -400,7 +400,7 @@
     "earnings": "Your earnings",
     "accept": "Accept mission",
     "decline": "Decline",
-    "expired": "expired",
+    "expired": "The offer expired — the 45-second window ran out. The mission goes back into the queue with elevated priority for another agent. Stay available to get the next offer.",
     "declined": "Offer declined — no penalty, but it affects your priority.",
     "accepted": "Mission accepted. The exact address is now visible.",
     "briefTitle": "Mission brief",

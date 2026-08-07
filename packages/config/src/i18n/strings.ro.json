@@ -400,7 +400,7 @@
     "earnings": "Câștigul tău",
     "accept": "Acceptă misiunea",
     "decline": "Refuză",
-    "expired": "expirat",
+    "expired": "Oferta a expirat — cele 45 de secunde s-au scurs. Misiunea revine în coadă cu prioritate ridicată pentru alt agent. Rămâi disponibil ca să primești următoarea ofertă.",
     "declined": "Ofertă refuzată — fără penalizare, dar afectează prioritatea.",
     "accepted": "Misiune acceptată. Adresa exactă e acum vizibilă.",
     "briefTitle": "Brief de misiune",
