@@ -86,18 +86,21 @@ update public.missions set status = 'quoted' where id = :'mission_immediate'::uu
 select public.create_quote_for_mission(:'mission_immediate'::uuid);
 select tests.clear_authentication();
 set local role service_role;
-select public.record_payment_event(:'mission_immediate'::uuid, 'auth', 'pi_cancel_immediate', '401.72', 'requires_capture');
+select public.record_payment_event(:'mission_immediate'::uuid, 'auth', 'pi_cancel_immediate', '338.80', 'requires_capture');
 reset role;
 select tests.authenticate_as(:'alice_id'::uuid);
 update public.missions set status = 'confirmed' where id = :'mission_immediate'::uuid;
 
--- null scheduled_at is also always "urgent" per create_quote_for_mission(),
--- so this has the same 401.72 total / 120.516 fee as the "10 minutes
--- out" case above.
+-- P1b pricing decision (founder, 2026-08-07, option B): a null
+-- scheduled_at ("Acum") is no longer urgent at all -- create_quote_for_
+-- mission() used to treat "no scheduled_at" as always urgent, which is
+-- exactly the bug that decision fixed. This mission now gets the same
+-- non-urgent 338.80 total as the "still 2h out" case above (130*2+20,
+-- *1.21 VAT), so its fee is 338.80*0.30=101.64, not the old 120.516.
 select is(
   (select public.cancel_mission_by_client(:'mission_immediate'::uuid)),
-  120.516,
-  'an immediate (no scheduled_at) confirmed booking is never "within" the free window, so the fee still applies'
+  101.64,
+  'an immediate (no scheduled_at) confirmed booking is never "within" the free window, so the fee still applies -- at the non-urgent total'
 );
 
 -- 5: only the mission's own client can cancel it
