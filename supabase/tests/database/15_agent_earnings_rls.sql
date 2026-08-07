@@ -19,11 +19,16 @@ insert into public.agents (id, status, is_available) values
 
 select tests.authenticate_as(:'alice_id'::uuid);
 
--- explicit weekday/daytime scheduled_at keeps the initial quote's
--- coefficients (and this test's expected earnings) deterministic
--- regardless of the real clock when the suite runs.
+-- F3 fix (2026-08-07, audit-findings.md): same class of bug as
+-- 08_quotes_rls.sql — a fixed literal date is only "safely in the
+-- future" until the real clock catches up to it, at which point
+-- create_quote_for_mission()'s urgent-coefficient check silently
+-- starts firing. Computed dynamically (next Tuesday 14:00 UTC) so it
+-- never expires.
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, scheduled_at)
-select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, '2026-08-04T14:00:00Z' from public.services where key = 'hourly'
+select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2,
+  date_trunc('week', now()) + interval '1 week' + interval '1 day' + interval '14 hours'
+from public.services where key = 'hourly'
 returning id as mission_id \gset
 update public.missions set status = 'quoted' where id = :'mission_id'::uuid;
 select tests.clear_authentication();

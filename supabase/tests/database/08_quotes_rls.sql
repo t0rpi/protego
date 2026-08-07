@@ -10,15 +10,22 @@ update public.profiles set role = 'dispatcher' where id = :'dana_id'::uuid;
 
 select tests.authenticate_as(:'alice_id'::uuid);
 
--- an explicit, safely-in-the-future weekday/daytime scheduled_at keeps
--- this test deterministic — with no scheduled_at at all,
--- create_quote_for_mission() would treat the booking as urgent (and,
--- depending on the real clock when the suite runs, possibly night/
--- weekend too), making the expected total time-of-run-dependent under
--- v2.3's real coefficients (M2/M3 never had this risk: their
--- coefficients were 1.0 no-ops).
+-- F3 fix (2026-08-07, audit-findings.md): the original hardcoded
+-- literal ('2026-08-04T14:00:00Z') was "safely in the future" only
+-- relative to when this test was written — by the time the suite ran
+-- again days later, that date was in the past, so
+-- create_quote_for_mission()'s v_is_urgent check (scheduled_at <= now()
+-- + 30min) started firing and the coef_urgent multiplier silently
+-- changed the expected total. Computed dynamically instead: next
+-- Tuesday at 14:00 UTC relative to whenever the suite actually runs —
+-- always several days out (never urgent), always a weekday (never
+-- weekend), always daytime (never night), so the coef stays 1.0
+-- regardless of the real clock. Keeps the original intent (a
+-- deterministic, coefficient-free scheduled_at) without a fixed date
+-- silently expiring again.
 insert into public.missions (client_id, service_id, city, mobility, agent_count, duration_hours, scheduled_at)
-select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2, '2026-08-04T14:00:00Z'
+select :'alice_id'::uuid, id, 'Oradea', 'on_foot', 1, 2,
+  date_trunc('week', now()) + interval '1 week' + interval '1 day' + interval '14 hours'
 from public.services where key = 'hourly'
 returning id as mission_id \gset
 

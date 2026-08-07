@@ -46,7 +46,19 @@ select :'alice_id'::uuid, id, 'Oradea', 'active', 'protego_vehicle', 'Strada Ori
 from public.services where key = 'protect_ride'
 returning id as mission_id \gset
 
+-- F3 fix (2026-08-07, audit-findings.md): a raw client-authenticated
+-- INSERT into mission_offers has no policy allowing it (correctly --
+-- only create_mission_offer(), dispatcher/admin-gated, is meant to
+-- write this table; granting INSERT to `authenticated` to make this
+-- fixture "work" would be a real security regression, not a fix).
+-- Same service_role-bypass pattern already used elsewhere in this
+-- suite for fixtures that need to skip normal write paths (e.g.
+-- record_payment_event() fixtures in 15_agent_earnings_rls.sql).
+select tests.clear_authentication();
+set local role service_role;
 insert into public.mission_offers (mission_id, agent_id, status) values (:'mission_id'::uuid, :'carol_id'::uuid, 'accepted');
+reset role;
+select tests.authenticate_as(:'alice_id'::uuid);
 
 select lives_ok(
   format(

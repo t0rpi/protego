@@ -16,6 +16,13 @@ select is(
   'Protect Ride labor_component excludes platform_fee and VAT'
 );
 
+-- v2.4 (20260803100003_compute_quote_last_mile.sql) added an
+-- unconditional 'door_to_door_included' (amount 0) line for Protect
+-- Ride, driven by pricing_config.door_to_door_included — not by any of
+-- this call's boolean args. This test's expected array pre-dates that
+-- migration; updated to match, since the missing line was never an
+-- "agent"/"vehicle" line in the first place (this assertion's actual
+-- intent, per its own description, still holds).
 select is(
   (
     select array_agg(line ->> 'label' order by line ->> 'label')
@@ -23,7 +30,7 @@ select is(
       public.compute_quote('protect_ride', 'Oradea', 1, 0, 15, 'protego_vehicle', false, false, false) -> 'lines'
     ) as line
   ),
-  array['base', 'distance', 'platform_fee', 'vat'],
+  array['base', 'distance', 'door_to_door_included', 'platform_fee', 'vat'],
   'Protect Ride never gets an "agent" or "vehicle" line — labor is base+distance only, vehicle is bundled'
 );
 
