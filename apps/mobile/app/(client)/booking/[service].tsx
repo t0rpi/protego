@@ -14,7 +14,6 @@ import { getCurrentPickupLocation, promptEnableLocation } from "../../../lib/gps
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 type Mobility = Database["public"]["Enums"]["mission_mobility"];
-type AgentPreference = Database["public"]["Enums"]["mission_agent_preference"];
 type DressCode = Database["public"]["Enums"]["mission_dress_code"];
 type ContextKind = Database["public"]["Enums"]["mission_context_kind"];
 
@@ -155,7 +154,6 @@ export default function BookingWizardScreen() {
 
   // step: team
   const [agentCount, setAgentCount] = useState(1);
-  const [agentPreference, setAgentPreference] = useState<AgentPreference>("any");
   const [dressCode, setDressCode] = useState<DressCode>("casual");
 
   // step: mobility — Protect Ride is Uber-style (always the Protego
@@ -462,7 +460,12 @@ export default function BookingWizardScreen() {
             : null,
         protected_person_id: selectedPersonId,
         agent_count: agentCount,
-        agent_preference: agentPreference,
+        // F4 recalibrated (2026-08-07, audit-findings.md): founder
+        // decision — remove the entire agent-preference selector from
+        // the pilot UI (not just the "female" option, which was the
+        // prior 2026-08-03 decision). The column/enum stay in the data
+        // model; the client no longer picks — always "any" for now.
+        agent_preference: "any",
         dress_code: dressCode,
         // canContinueMobility already guarantees mobility is set by the
         // time this runs; the fallback is unreachable defense in depth.
@@ -766,22 +769,14 @@ export default function BookingWizardScreen() {
                 <Text style={s.chipText}>+</Text>
               </Pressable>
             </View>
-            <Text style={s.label}>{t("booking.preference")}</Text>
-            <View style={s.row}>
-              {/* "female" removed from the pilot UI (founder decision,
-                  2026-08-03): only 1 female agent, availability can't be
-                  promised. Stays in the data model/enum — comes back as
-                  a real, honored preference with Drum Sigur in Wave 2. */}
-              {(["male", "any"] as const).map((pref) => (
-                <Pressable
-                  key={pref}
-                  style={[s.chip, agentPreference === pref && s.chipSelected]}
-                  onPress={() => setAgentPreference(pref)}
-                >
-                  <Text style={s.chipText}>{t(`booking.pref${pref === "any" ? "Any" : "Male"}`)}</Text>
-                </Pressable>
-              ))}
-            </View>
+            {/* F4 recalibrated (2026-08-07, audit-findings.md): founder
+                decision — the entire agent-preference selector is
+                removed from the pilot UI (this supersedes the prior
+                2026-08-03 decision to remove only "female"). The
+                column/enum stay in the data model; every mission is
+                submitted with agent_preference: "any" (see goToQuote).
+                Comes back as a real, client-facing selector with Drum
+                Sigur in Wave 2. */}
             <Text style={s.label}>{t("booking.dress")}</Text>
             <View style={s.row}>
               {(["formal", "casual", "discreet"] as const).map((dress) => (
