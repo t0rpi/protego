@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { rankAgentSuggestions, SOS_PROTOCOL_STEPS, type AgentSuggestionInput } from "@protego/domain";
+import {
+  computeMapBounds,
+  decodePolyline,
+  projectToUnit,
+  rankAgentSuggestions,
+  SOS_PROTOCOL_STEPS,
+  type AgentSuggestionInput,
+  type MapMarker,
+} from "@protego/domain";
 import { createClient } from "../../../../lib/supabase/client";
 
 type Tab = "map" | "sos" | "risk" | "handover";
@@ -51,6 +59,99 @@ function beepOn(ctx: AudioContext, urgent: boolean) {
   };
   schedule(0, urgent ? 1046 : 784);
   if (urgent) schedule(400, 1046);
+}
+
+const MAP_MARKER_COLOR: Record<MapMarker["kind"], string> = {
+  origin: "var(--gold)",
+  destination: "var(--gold)",
+  agent: "var(--gold)",
+  mission: "var(--gold)",
+  sos: "var(--danger)",
+};
+
+/**
+ * Pass B (2026-08-07) — design/HANDOFF.md §6 Map slot, web side: same
+ * props shape as packages/ui's mobile Map (markers + optional encoded
+ * polyline), rendered as real DOM SVG/positioned divs since the
+ * dispatcher console is a plain browser page (no react-native-svg
+ * question here — this was never going to need a native rebuild).
+ * Pins are absolutely-positioned divs (not SVG circles) so they stay
+ * perfectly round regardless of the panel's aspect ratio; the route
+ * line, when present, is the one thing actually drawn as SVG since a
+ * thin dashed line tolerates the non-uniform scaling a stretched
+ * viewBox introduces far better than a circle would.
+ */
+function DispatcherMap({
+  markers,
+  encodedPolyline,
+  height = 260,
+}: {
+  markers: MapMarker[];
+  encodedPolyline?: string | null;
+  height?: number;
+}) {
+  const route = encodedPolyline ? decodePolyline(encodedPolyline) : [];
+  const boundsPoints = [...markers.map((m) => ({ lat: m.lat, lng: m.lng })), ...route];
+  const bounds = computeMapBounds(boundsPoints);
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-lg"
+      style={{ height, backgroundColor: "#101216" }}
+    >
+      <div className="absolute left-0 right-0 top-[38%] h-px" style={{ backgroundColor: "#1B1E24" }} />
+      <div className="absolute bottom-0 top-0 left-[30%] w-px" style={{ backgroundColor: "#22252C" }} />
+
+      {route.length > 1 ? (
+        <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+          <polyline
+            points={route.map((p) => {
+              const u = projectToUnit(p, bounds);
+              return `${u.x * 100},${u.y * 100}`;
+            }).join(" ")}
+            fill="none"
+            stroke="var(--gold)"
+            strokeWidth={0.6}
+            strokeDasharray="2.5,2"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      ) : null}
+
+      {markers.length === 0 ? (
+        <p className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-secondary)]">
+          Nicio poziție live momentan.
+        </p>
+      ) : (
+        markers.map((marker) => {
+          const unit = projectToUnit(marker, bounds);
+          const color = MAP_MARKER_COLOR[marker.kind];
+          const isLive = marker.kind === "agent" || marker.kind === "sos";
+          return (
+            <div
+              key={marker.id}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${unit.x * 100}%`, top: `${unit.y * 100}%` }}
+              title={marker.label ?? marker.kind}
+            >
+              {isLive ? (
+                <div
+                  className={`absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+                    marker.kind === "sos" ? "animate-pulse" : ""
+                  }`}
+                  style={{ backgroundColor: color, opacity: 0.22 }}
+                />
+              ) : null}
+              <div
+                className="relative h-2.5 w-2.5 rounded-full border-2"
+                style={{ backgroundColor: color, borderColor: "#101216" }}
+              />
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
 }
 
 /** Dispatcher-2 fix: "waiting since / X min ago" per queue/alert row. */
@@ -423,25 +524,19 @@ function MapQueueTab({ notify }: { notify: (urgent: boolean) => void }) {
   return (
     <div className="flex flex-col gap-8">
       <section>
-        <h2 className="mb-2 text-lg font-semibold">Hartă (placeholder stilizat — fără furnizor de hartă plătit)</h2>
-        <div className="relative h-64 rounded-lg border border-[var(--border)] bg-[#101216] p-4">
-          {active.filter((m) => m.position).length === 0 ? (
-            <p className="text-xs text-[var(--text-secondary)]">Nicio poziție live momentan.</p>
-          ) : (
-            <div className="grid grid-cols-4 gap-3">
-              {active
-                .filter((m) => m.position)
-                .map((m) => (
-                  <div key={m.id} className="rounded border border-[var(--gold)] p-2 text-center">
-                    <div className="mx-auto mb-1 h-3 w-3 rounded-full bg-[var(--gold)]" />
-                    <p className="text-[10px] text-[var(--text-secondary)]">
-                      {m.position!.lat.toFixed(3)}, {m.position!.lng.toFixed(3)}
-                    </p>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
+        <h2 className="mb-2 text-lg font-semibold">Hartă — agenți și misiuni active</h2>
+        <DispatcherMap
+          height={260}
+          markers={active
+            .filter((m): m is ActiveMissionRow & { position: { lat: number; lng: number } } => m.position !== null)
+            .map((m) => ({
+              id: m.id,
+              kind: "agent",
+              lat: m.position.lat,
+              lng: m.position.lng,
+              label: `${m.agent_name ?? "agent"} · ${m.status}`,
+            }))}
+        />
       </section>
 
       <section>
