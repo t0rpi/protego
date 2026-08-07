@@ -65,7 +65,13 @@ function formatQuoteLineLabel(
 ): string {
   const key = QUOTE_LINE_KEYS[label];
   if (label === "agent") {
-    return t(key, { agents: agentCount, hours });
+    // P2e QA fix: this used to be one string with a hand-rolled
+    // "agent(ți)" pseudo-plural and an unconditional "ore" (wrong for
+    // hours=1, "1 ore" isn't real Romanian) — real i18next pluralization
+    // needs a `count` per noun, so each noun is its own translation key.
+    const agentLabel = t("quote.agentCount", { count: agentCount });
+    const hourLabel = t("quote.hourCount", { count: hours });
+    return t(key, { agentLabel, hourLabel });
   }
   const base = key ? t(key) : label;
   if ((label === "distance" || label === "distance_estimated") && distanceKm) {
