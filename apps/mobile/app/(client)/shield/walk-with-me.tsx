@@ -153,7 +153,19 @@ export default function WalkWithMeScreen() {
       />
 
       <Text style={styles.label}>{t("wwm.watchers")}</Text>
-      <Text style={styles.watcherCount}>{watcherCount}</Text>
+      {watcherCount === 0 ? (
+        // P2k QA fix: this used to show the raw count, so an agent with
+        // no trusted contacts configured yet saw a bare "0" here —
+        // confusing given business-rules.md's own contact/circle flow
+        // (Walk With Me's whole safety mechanism is "we contact your
+        // trusted circle"). Now a real, actionable message pointing to
+        // where contacts are actually added.
+        <Pressable onPress={() => router.push("/shield/circle")}>
+          <Text style={styles.watcherCountEmpty}>{t("wwm.watchersNone")}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.watcherCount}>{watcherCount}</Text>
+      )}
 
       <Pressable style={styles.startButton} onPress={start} disabled={loading}>
         {loading ? <ActivityIndicator color={tokens.color.semantic.textOnGold} /> : (
@@ -200,6 +212,13 @@ const styles = StyleSheet.create({
     color: tokens.color.base.gold,
     fontSize: tokens.typography.size.title,
     fontWeight: "600",
+    alignSelf: "flex-start",
+  },
+  watcherCountEmpty: {
+    color: tokens.color.base.gold,
+    fontSize: tokens.typography.size.body,
+    fontWeight: "600",
+    textDecorationLine: "underline",
     alignSelf: "flex-start",
   },
   startButton: {

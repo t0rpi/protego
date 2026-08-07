@@ -111,6 +111,7 @@
     "destination": "Destination",
     "duration": "Estimated duration",
     "watchers": "Who's watching",
+    "watchersNone": "No one yet — add people",
     "start": "Start — {{duration}}",
     "activeTitle": "Walk With Me active",
     "activeNote": "Heading to {{destination}}. {{names}} can see your live location.",

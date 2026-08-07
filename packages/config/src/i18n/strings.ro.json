@@ -111,6 +111,7 @@
     "destination": "Destinația",
     "duration": "Durata estimată",
     "watchers": "Cine veghează",
+    "watchersNone": "Nimeni încă — adaugă persoane",
     "start": "Pornește — {{duration}}",
     "activeTitle": "Walk With Me activ",
     "activeNote": "Spre {{destination}}. {{names}} văd locația ta live.",
