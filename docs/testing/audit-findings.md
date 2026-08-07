@@ -65,4 +65,42 @@ Not a regression — this is exactly what was asked for on 2026-08-03 (remove on
 
 ---
 
-*Compiled 2026-08-05, in direct response to the founder's post-overnight-crash instruction: "the QA audit pass producing docs/testing/audit-findings.md (severity list, no silent fixes)." Nothing above was changed as part of writing this document — F1-F4 are reported for triage, not applied.*
+## Delta pass — 2026-08-07
+
+**Scope:** everything the 2026-08-05 pass above did not cover — commits `f4d2046` through `c51d143` (the auth-lockout fix, plus the founder's dispatcher+client QA round: high-risk approval → client notification, GPS prefill re-arm, GPS enable prompt, dispatcher console clock/timestamps/detail/roster/alerts, pull-to-refresh). Same method: direct code inspection with file:line evidence, findings reported not silently patched. This is the gate check before Pass B.
+
+### F5 — MEDIUM — A client who closes the app while a high-risk mission is "in review" has no way back to it once confirmed
+**Area:** `apps/mobile/app/(client)/booking/[service].tsx:213-226`, `apps/mobile/app/(client)/(tabs)/index.tsx`
+
+The new poll in the booking wizard's "result" step (fixing the founder's "no push/status update on the phone" report) only runs while that screen stays mounted. If the client force-quits or backgrounds the app for long enough to get evicted while the mission sits in `review`, and a dispatcher confirms it in the meantime, there is nothing that routes the client back to `/mission/[missionId]` on next open — Home (`(tabs)/index.tsx`) has no "you have a mission in progress" banner, and History (`(tabs)/history.tsx`) only lists `status = 'done'` missions. The client would have to already know the URL, which they don't. This narrows the gap the fix was meant to close (it works reliably as long as the app stays open) rather than closing it completely.
+
+**Recommendation:** Home should check for an active/review mission for the current client on load and surface a "continue to your mission" card, the same way it already checks `profile.role`.
+
+### F6 — LOW — GPS prefill can re-trigger while a client is mid-edit clearing the pickup field
+**Area:** `apps/mobile/app/(client)/booking/[service].tsx:328-334`
+
+The `useFocusEffect` added to re-arm the GPS prefill on every booking entry resets `gpsStatus` to `"idle"` whenever `pickupAddress` is empty — and it re-evaluates on every keystroke, not just on a real screen-focus event, because its memoized callback's identity depends on `pickupAddress`. A client who backspaces the pickup field down to empty (meaning to type a different address) will trigger a fresh GPS lookup mid-edit, which can silently refill the field with their device's current coordinates a moment later — overwriting what they were about to type. Recoverable (they can just edit again) but a real, reproducible surprise directly caused by this fix.
+
+**Recommendation:** track "client explicitly cleared the field" (e.g. a ref set on manual `onChangeText`) separately from "field is empty because nothing has loaded yet," and skip the reset in the former case.
+
+### F7 — MEDIUM — Declining the Android "enable location" prompt still forces the client into Settings
+**Area:** `apps/mobile/lib/gps-location.ts` (`promptEnableLocation`)
+
+`Location.enableNetworkProviderAsync()` rejects both when the user taps "No thanks" on the native dialog and when the device/OS doesn't support it. The current code catches both cases identically and falls through to `Linking.openSettings()` — so a client who deliberately declines the location prompt is immediately redirected into their phone's Settings app anyway, every time they refocus the field. This reads as the app overriding a clear "no."
+
+**Recommendation:** distinguish user-declined (stop there, respect the choice, let them type manually) from unsupported/errored (fall back to Settings) — `enableNetworkProviderAsync()`'s rejection doesn't currently carry enough information to tell them apart, so this needs either a different API call or accepting a single fallback behavior deliberately rather than by accident.
+
+### F8 — MEDIUM — Dispatcher console's audible alert can be silently blocked by the browser's autoplay policy
+**Area:** `apps/web/app/(dispatcher)/dispatcher/console/console-client.tsx:23-48` (`playAlertBeep`)
+
+Most browsers keep a fresh `AudioContext` in a `"suspended"` state until the page has registered a user gesture (click, keypress). `playAlertBeep()` never checks `ctx.state` or calls `ctx.resume()`, so if a new SOS or mission arrives via the 5s/8s poll before the dispatcher has clicked anywhere on the page — plausible right after the console loads at shift start — the alert can fire with no audible result and no visual indicator that it "should have" played. This directly undercuts the point of the feature (F5-equivalent risk: the one alert dispatchers are meant to rely on when not staring at the screen).
+
+**Recommendation:** call `ctx.resume()` before scheduling the oscillators and check `ctx.state === "running"` afterward; if it's still suspended, show a visible "🔇 click anywhere to enable alert sounds" banner rather than failing silently.
+
+### Minor, not severity-tracked
+- `playAlertBeep()` (same location as F8) creates a new `AudioContext` on every call and never closes it — harmless for a short test session, worth a `ctx.close()` after the beep finishes for a console left open a full shift.
+- The `create_mission_offer` RPC (`supabase/migrations/20260731110002_mission_offers.sql:83-85`) does already reject an offer to a since-become-unavailable agent server-side, so the new agent dropdown's client-side "disponibil/ocupat" state going briefly stale between polls (Dispatcher-4) is not a real gap — checked specifically because it looked like one; confirmed safe.
+
+---
+
+*Compiled 2026-08-05, in direct response to the founder's post-overnight-crash instruction: "the QA audit pass producing docs/testing/audit-findings.md (severity list, no silent fixes)." Delta pass compiled 2026-08-07 against commits `f4d2046`..`c51d143`, per explicit instruction: "targeted delta pass... give me the COMPLETE picture for triage." Nothing in either pass was changed as part of writing this document — F1-F8 are reported for triage, not applied.*
