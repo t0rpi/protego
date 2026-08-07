@@ -1,9 +1,11 @@
 import "../lib/i18n";
+import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Stack } from "expo-router";
 import { tokens } from "@protego/ui";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { StripeKeyBootWarning } from "../lib/stripe-key-guard";
+import { setupNotificationNavigation } from "../lib/push";
 
 /**
  * Root layout. M1 adds i18n init + auth session context, both consumed by
@@ -21,6 +23,8 @@ import { StripeKeyBootWarning } from "../lib/stripe-key-guard";
  * payment actions require an EAS dev-client build.
  */
 export default function RootLayout() {
+  useEffect(() => setupNotificationNavigation(), []);
+
   return (
     <AuthProvider>
       <View style={{ flex: 1 }}>

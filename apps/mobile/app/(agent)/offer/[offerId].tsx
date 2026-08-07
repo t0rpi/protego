@@ -86,7 +86,12 @@ export default function OfferScreen() {
       setError(acceptError.message);
       return;
     }
-    router.replace(`/mission/${brief.mission_id}`);
+    // P2c QA fix: this used to router.replace() straight to the mission
+    // screen with zero feedback — the founder's exact complaint was "no
+    // clear confirmation of what happens next" after accepting. Show an
+    // explicit accepted state first (agentApp.accepted was already
+    // written for this — it just wasn't wired into any screen yet).
+    setResolved("accepted");
   }
 
   async function decline() {
@@ -125,6 +130,20 @@ export default function OfferScreen() {
           <Text style={s.note}>{t("agentApp.expired")}</Text>
           <Pressable style={s.button} onPress={() => router.replace("/agent")}>
             <Text style={s.buttonText}>{t("common.close")}</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (resolved === "accepted") {
+    return (
+      <View style={s.container}>
+        <ScrollView contentContainerStyle={s.scroll}>
+          <Text style={s.title}>{t("agentApp.offerTitle")}</Text>
+          <Text style={s.note}>{t("agentApp.accepted")}</Text>
+          <Pressable style={s.button} onPress={() => router.replace(`/mission/${brief.mission_id}`)}>
+            <Text style={s.buttonText}>{t("agentApp.goToClient")}</Text>
           </Pressable>
         </ScrollView>
       </View>

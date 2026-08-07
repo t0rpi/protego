@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import { router } from "expo-router";
 import { supabase } from "./supabase";
 
 // Founder QA (2026-08-04): this runs unconditionally at module scope
@@ -58,4 +59,27 @@ export async function registerForPushNotifications(userId: string): Promise<void
     // Best-effort — see the function comment. No push token this
     // session is not a reason to break the screen that requested one.
   }
+}
+
+/**
+ * P2c QA fix: tapping the "new mission offer" push did nothing beyond
+ * opening the app to wherever it last was — no deep link to the actual
+ * offer, which was half of the founder's "vague notification" QA
+ * finding (the other half was notify_event()'s message text itself,
+ * fixed server-side in 20260808110001_notify_event_readable_copy.sql).
+ * notify_on_mission_offer_created() already puts `offer_id` in the
+ * push's data payload; this just needed a tap handler to act on it.
+ * Registered once at the root layout (module lifetime, like the
+ * notification handler above) — safe to call before a session exists,
+ * since a tap can only happen for a notification this device actually
+ * received while signed in.
+ */
+export function setupNotificationNavigation(): () => void {
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data as { offer_id?: string } | undefined;
+    if (data?.offer_id) {
+      router.push(`/offer/${data.offer_id}`);
+    }
+  });
+  return () => subscription.remove();
 }
