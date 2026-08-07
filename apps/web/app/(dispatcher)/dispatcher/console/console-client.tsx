@@ -21,6 +21,17 @@ const TAB_LABEL: Record<Tab, string> = {
   handover: "Predare tură",
 };
 
+// P3 QA fix (founder): "it's confusing — notifications arrive but it's
+// unclear what to DO... any new dispatcher understands the job without
+// training." A one-line subtitle under the tab nav, naming the actual
+// task on that tab, not just its title.
+const TAB_SUBTITLE: Record<Tab, string> = {
+  map: "Atribuie manual misiunile neasignate unui agent disponibil — alege agentul, trimite oferta.",
+  sos: "Preia alerta, sună imediat, bifează pașii protocolului, apoi închide cu jurnal completat.",
+  risk: "Sună clientul, verifică identitatea (nivel 2), apoi decide individual — confirmă sau refuză.",
+  handover: "Lasă un sumar scris pentru dispecerul care preia tura după tine.",
+};
+
 const DEFAULT_TITLE = "PROTEGO — Dispecer";
 
 type AudioContextClass = typeof AudioContext;
@@ -85,10 +96,12 @@ function DispatcherMap({
   markers,
   encodedPolyline,
   height = 260,
+  emptyMessage = "Pozițiile live ale agenților vor apărea aici pe măsură ce misiunile pornesc.\nMomentan nicio poziție de afișat.",
 }: {
   markers: MapMarker[];
   encodedPolyline?: string | null;
   height?: number;
+  emptyMessage?: string;
 }) {
   const route = encodedPolyline ? decodePolyline(encodedPolyline) : [];
   const boundsPoints = [...markers.map((m) => ({ lat: m.lat, lng: m.lng })), ...route];
@@ -119,9 +132,13 @@ function DispatcherMap({
       ) : null}
 
       {markers.length === 0 ? (
-        <p className="absolute inset-0 flex items-center justify-center text-xs text-[var(--text-secondary)]">
-          Nicio poziție live momentan.
-        </p>
+        // P3 QA fix (founder): "an explanatory placeholder on the map
+        // panel (currently bare frames)" — a one-line caption easy to
+        // miss on an otherwise empty dark box. Explains what the panel
+        // is FOR and why it's empty right now, not just "no data".
+        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+          <p className="whitespace-pre-line text-sm text-[var(--text-secondary)]">{emptyMessage}</p>
+        </div>
       ) : (
         markers.map((marker) => {
           const unit = projectToUnit(marker, bounds);
@@ -304,6 +321,8 @@ export function ConsoleClient() {
           </button>
         ))}
       </nav>
+
+      <p className="mb-6 text-sm text-[var(--text-secondary)]">{TAB_SUBTITLE[tab]}</p>
 
       {tab === "map" ? <MapQueueTab notify={notify} /> : null}
       {tab === "sos" ? <SosTab notify={notify} /> : null}
@@ -572,7 +591,7 @@ function MapQueueTab({ notify }: { notify: (urgent: boolean) => void }) {
               <th className="py-2">Așteaptă de la</th>
               <th className="py-2">Prioritate</th>
               <th className="py-2">Sugestii ordonate — distanță · rating · badge · vehicul</th>
-              <th className="py-2"></th>
+              <th className="py-2">Acțiune</th>
             </tr>
           </thead>
           <tbody>
@@ -841,7 +860,19 @@ function SosTab({ notify }: { notify: (urgent: boolean) => void }) {
           <p className="text-sm text-[var(--text-secondary)]">Selectează o alertă din listă.</p>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+            {/* P3 QA fix: this used to be raw "Locație: lat, lng" text —
+                no map at all, even though DispatcherMap already supports
+                an "sos" marker kind for exactly this. */}
+            <DispatcherMap
+              height={200}
+              markers={
+                selected.lat !== null && selected.lng !== null
+                  ? [{ id: selected.id, kind: "sos", lat: selected.lat, lng: selected.lng, label: "Locație SOS" }]
+                  : []
+              }
+              emptyMessage="Nicio locație raportată pentru această alertă."
+            />
+            <p className="text-xs text-[var(--text-secondary)]">
               Locație: {selected.lat ?? "—"}, {selected.lng ?? "—"}
             </p>
 
@@ -996,7 +1027,9 @@ function HighRiskTab() {
 
       {message ? <p className="text-sm text-[var(--gold)]">{message}</p> : null}
 
-      {rows.map((row) => (
+      {rows.map((row) => {
+        const verified = (row.verification_level ?? 0) >= 2;
+        return (
         <div key={row.id} className="rounded-md border border-[var(--border)] p-4">
           <p className="font-semibold">
             {row.client_name ?? row.client_id} · {row.city} · nivel {row.verification_level ?? "?"}
@@ -1005,6 +1038,24 @@ function HighRiskTab() {
             Verificare nivel 2 obligatorie înainte de orice confirmare. Fără apel + CI verificat, misiunea rămâne „în
             verificare”.
           </p>
+          {/* P3 QA fix (founder): "a visible flow hint on high-risk items
+              (call -> verify -> confirm)" — the Confirm button was
+              already gated on call_logged + verification_level, but
+              nothing on screen showed the required order or which step
+              was still missing. */}
+          <div className="mb-2 flex items-center gap-2 text-xs">
+            <span className={row.call_logged ? "text-[var(--ok)]" : "text-[var(--text-secondary)]"}>
+              {row.call_logged ? "✓" : "1."} Apel
+            </span>
+            <span className="text-[var(--text-secondary)]">→</span>
+            <span className={verified ? "text-[var(--ok)]" : "text-[var(--text-secondary)]"}>
+              {verified ? "✓" : "2."} Verificare nivel 2
+            </span>
+            <span className="text-[var(--text-secondary)]">→</span>
+            <span className={row.call_logged && verified ? "text-[var(--gold)]" : "text-[var(--text-secondary)]"}>
+              3. Confirmare
+            </span>
+          </div>
           <div className="mb-2 flex gap-2">
             <button
               onClick={() => logCall(row)}
@@ -1035,7 +1086,8 @@ function HighRiskTab() {
             </button>
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {rows.length === 0 ? <p className="text-sm text-[var(--text-secondary)]">Nicio misiune în verificare.</p> : null}
     </div>
