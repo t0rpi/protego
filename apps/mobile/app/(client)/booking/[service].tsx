@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@protego/supabase";
@@ -370,6 +370,32 @@ export default function BookingWizardScreen() {
     }, [step])
   );
 
+  // P1a fix (2026-08-07, founder QA): "prefill never recovers even after
+  // manually enabling location in Settings." useFocusEffect above only
+  // fires on in-app navigation focus changes — it never fires when the
+  // client leaves the whole app for the OS Settings screen and comes
+  // back, since that's not an in-app navigation event at all. Listening
+  // for AppState -> "active" catches exactly that case: re-arm the
+  // prefill so the very next check reflects whatever the client actually
+  // changed while this app was backgrounded.
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (
+        nextState === "active" &&
+        stepRef.current === "where" &&
+        !pickupAddressRef.current &&
+        !pickupPlaceIdRef.current
+      ) {
+        setGpsStatus("idle");
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   // Client-6 fix (2026-08-05): "when location is OFF, the address field
   // just says location is disabled — instead, tapping the field should
   // PROMPT to enable GPS". Fires on focus, never blocks typing — after
@@ -378,7 +404,7 @@ export default function BookingWizardScreen() {
   function handlePickupFocus() {
     if (pickupAddress || pickupPlaceId) return;
     if (gpsStatus !== "services_disabled" && gpsStatus !== "permission_denied") return;
-    promptEnableLocation().then(() => setGpsStatus("idle"));
+    promptEnableLocation(gpsStatus).then(() => setGpsStatus("idle"));
   }
 
   useEffect(() => {

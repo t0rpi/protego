@@ -94,11 +94,38 @@ export async function getCurrentPickupLocation(): Promise<PickupLocationResult> 
  * an Android rejection — Settings is reserved for the platforms/cases
  * where the native prompt was never shown at all (iOS has no such
  * dialog; here, the module failing to load at all).
+ *
+ * P1a fix (2026-08-07, founder QA): the above only ever handled the
+ * *services* toggle (GPS on/off) — it never actually did anything for a
+ * *permission* denial (a completely different Android subsystem), so
+ * tapping the hint after denying the permission prompt called
+ * enableNetworkProviderAsync() (irrelevant to permissions) and, on
+ * Android, never fell through to Settings either — a real dead end,
+ * matching the founder's report exactly. Permission requests, unlike
+ * the services dialog, DO expose a reliable signal for this
+ * (`canAskAgain`): Android lets you re-show the system prompt once
+ * after a first decline, and only forces you to Settings once the user
+ * has denied it enough times that the OS stops offering it — no
+ * ambiguity here, unlike the services-toggle case above.
  */
-export async function promptEnableLocation(): Promise<void> {
+export async function promptEnableLocation(kind: "services_disabled" | "permission_denied"): Promise<void> {
   const Location = loadLocationModule();
+  if (!Location) {
+    await openSettingsSafely();
+    return;
+  }
+
+  if (kind === "permission_denied") {
+    const current = await Location.getForegroundPermissionsAsync();
+    if (current.canAskAgain) {
+      await Location.requestForegroundPermissionsAsync();
+      return;
+    }
+    await openSettingsSafely();
+    return;
+  }
+
   if (Platform.OS === "android") {
-    if (!Location) return;
     try {
       await Location.enableNetworkProviderAsync();
     } catch {
@@ -107,6 +134,10 @@ export async function promptEnableLocation(): Promise<void> {
     }
     return;
   }
+  await openSettingsSafely();
+}
+
+async function openSettingsSafely(): Promise<void> {
   try {
     await Linking.openSettings();
   } catch {
