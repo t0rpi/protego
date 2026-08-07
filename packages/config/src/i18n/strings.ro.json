@@ -55,6 +55,7 @@
   },
   "home": {
     "greetingEvening": "Bună seara, {{name}}.",
+    "greetingEveningNoName": "Bună seara.",
     "greetingSub": "Unde ai nevoie de protecție azi?",
     "services": "Servicii",
     "rideTitle": "Protect Ride",
@@ -174,6 +175,7 @@
     "durationNote": "Escortă: minim de facturare 1 oră. Protecție cu ora: de la 2 ore, tarif degresiv peste 8 ore.",
     "whoTitle": "Cine e protejat",
     "me": "Eu — {{name}}",
+    "meNoName": "Eu",
     "meVerified": "Identitate verificată ✓ nivel 2",
     "savedPerson": "Persoană protejată salvată",
     "newPerson": "+ Persoană nouă",

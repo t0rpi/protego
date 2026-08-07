@@ -119,7 +119,9 @@ export default function ClientHomeScreen() {
         }
       >
         <Text style={styles.greeting}>
-          {t("home.greetingEvening", { name: profile?.full_name ?? "" })}
+          {profile?.full_name
+            ? t("home.greetingEvening", { name: profile.full_name })
+            : t("home.greetingEveningNoName")}
         </Text>
         <Text style={styles.greetingSub}>{t("home.greetingSub")}</Text>
 

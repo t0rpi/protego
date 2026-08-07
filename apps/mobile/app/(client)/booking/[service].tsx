@@ -168,6 +168,7 @@ export default function BookingWizardScreen() {
   // step: who
   const [protectedPersons, setProtectedPersons] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [ownFullName, setOwnFullName] = useState<string | null>(null);
 
   // step: team
   const [agentCount, setAgentCount] = useState(1);
@@ -421,6 +422,19 @@ export default function BookingWizardScreen() {
       .select("id, full_name")
       .eq("owner_id", session.user.id)
       .then(({ data }) => setProtectedPersons(data ?? []));
+  }, [session]);
+
+  useEffect(() => {
+    // P2f QA fix: booking.me used to be called with a hardcoded
+    // `name: ""` — always blank ("Eu — "), never the client's real
+    // name, because this screen never fetched its own profile at all.
+    if (!session) return;
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => setOwnFullName(data?.full_name ?? null));
   }, [session]);
 
   // 2026-08-04 v2.4 — read-only preview of the configured rates so the
@@ -807,7 +821,9 @@ export default function BookingWizardScreen() {
               style={[s.card, !selectedPersonId && s.cardSelected]}
               onPress={() => setSelectedPersonId(null)}
             >
-              <Text style={s.cardTitle}>{t("booking.me", { name: "" })}</Text>
+              <Text style={s.cardTitle}>
+                {ownFullName ? t("booking.me", { name: ownFullName }) : t("booking.meNoName")}
+              </Text>
             </Pressable>
             {protectedPersons.map((person) => (
               <Pressable

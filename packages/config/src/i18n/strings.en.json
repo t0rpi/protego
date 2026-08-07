@@ -55,6 +55,7 @@
   },
   "home": {
     "greetingEvening": "Good evening, {{name}}.",
+    "greetingEveningNoName": "Good evening.",
     "greetingSub": "Where do you need protection today?",
     "services": "Services",
     "rideTitle": "Protect Ride",
@@ -174,6 +175,7 @@
     "durationNote": "Escort: 1 hour minimum billing. Hourly Protection: from 2 hours, degressive rate over 8 hours.",
     "whoTitle": "Who is protected",
     "me": "Me — {{name}}",
+    "meNoName": "Me",
     "meVerified": "Identity verified ✓ level 2",
     "savedPerson": "Saved protected person",
     "newPerson": "+ New person",
