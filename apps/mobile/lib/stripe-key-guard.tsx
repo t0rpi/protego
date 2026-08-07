@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { bookingStyles as s } from "./booking-styles";
 
 /**
@@ -21,6 +21,47 @@ export function hasStripePublishableKey(): boolean {
 export function StripeKeyMissing() {
   return <Text style={s.error}>Plățile nu sunt configurate pe acest build (cheie Stripe lipsă).</Text>;
 }
+
+/**
+ * Founder QA (2026-08-07): the missing-key comment above already
+ * documents this happened once before ("never re-added after an
+ * earlier env-var mixup") — it silently stayed missing from
+ * apps/mobile/.env.local for days, only ever surfacing once someone
+ * actually reached a payment screen (PaymentStep/OverageButton, both
+ * dev-build-only). That's a "fails softly, deep in a flow" design,
+ * exactly what the founder asked to stop: a missing key must fail
+ * loudly at boot instead, on every screen, not just the payment ones.
+ * __DEV__-only — this is a local build-config problem, never a real
+ * production scenario.
+ */
+export function StripeKeyBootWarning() {
+  if (!__DEV__ || hasStripePublishableKey()) return null;
+  return (
+    <View style={bootStyles.banner} pointerEvents="none">
+      <Text style={bootStyles.text}>⚠ CHEIE STRIPE LIPSĂ — plățile vor eșua (EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY)</Text>
+    </View>
+  );
+}
+
+const bootStyles = StyleSheet.create({
+  banner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#E5484D",
+    paddingTop: 44,
+    paddingBottom: 6,
+    paddingHorizontal: 12,
+    zIndex: 999,
+  },
+  text: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+});
 
 interface PaymentErrorBoundaryState {
   error: Error | null;

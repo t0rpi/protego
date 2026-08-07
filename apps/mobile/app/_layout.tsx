@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { Stack } from "expo-router";
 import { tokens } from "@protego/ui";
 import { AuthProvider, useAuth } from "../lib/auth-context";
+import { StripeKeyBootWarning } from "../lib/stripe-key-guard";
 
 /**
  * Root layout. M1 adds i18n init + auth session context, both consumed by
@@ -22,7 +23,13 @@ import { AuthProvider, useAuth } from "../lib/auth-context";
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <View style={{ flex: 1 }}>
+        <RootNavigator />
+        {/* Founder QA (2026-08-07): a missing Stripe key must fail loudly
+            at boot, on every screen — not silently until someone happens
+            to reach a payment step. __DEV__-only, see stripe-key-guard.tsx. */}
+        <StripeKeyBootWarning />
+      </View>
     </AuthProvider>
   );
 }
