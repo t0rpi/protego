@@ -80,19 +80,32 @@ export async function getCurrentPickupLocation(): Promise<PickupLocationResult> 
  * real native "turn on location?" dialog (enableNetworkProviderAsync) —
  * iOS has no equivalent (Apple doesn't let apps toggle system location),
  * so the only option there is deep-linking to the app's own Settings
- * page. Never throws — a declined prompt or unsupported platform is not
- * a reason to block manual address entry.
+ * page.
+ *
+ * F7 fix (2026-08-07, audit-findings.md): declining that Android dialog
+ * used to fall through to Linking.openSettings() anyway, forcing a
+ * Settings-app redirect right after the client had just said no.
+ * Checked expo-location's native Android source
+ * (LocationModule.kt:288-303) to see whether "declined" could be told
+ * apart from "device can't resolve this at all" — it can't: BOTH cases
+ * throw the exact same LocationSettingsUnsatisfiedException, so there is
+ * no reliable signal here to distinguish them. Given that, the only
+ * choice that respects an explicit "no" is to never auto-redirect after
+ * an Android rejection — Settings is reserved for the platforms/cases
+ * where the native prompt was never shown at all (iOS has no such
+ * dialog; here, the module failing to load at all).
  */
 export async function promptEnableLocation(): Promise<void> {
   const Location = loadLocationModule();
-  if (Platform.OS === "android" && Location) {
+  if (Platform.OS === "android") {
+    if (!Location) return;
     try {
       await Location.enableNetworkProviderAsync();
-      return;
     } catch {
-      // User declined the native dialog, or the device doesn't support
-      // it — fall through to Settings below.
+      // Declined, or unresolvable — indistinguishable from this API, so
+      // stay on manual entry rather than second-guess the client's "no".
     }
+    return;
   }
   try {
     await Linking.openSettings();
