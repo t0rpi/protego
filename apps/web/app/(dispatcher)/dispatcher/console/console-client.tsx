@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { rankAgentSuggestions, SOS_PROTOCOL_STEPS, type AgentSuggestionInput } from "@protego/domain";
 import { createClient } from "../../../../lib/supabase/client";
 
@@ -13,37 +13,44 @@ const TAB_LABEL: Record<Tab, string> = {
   handover: "Predare tură",
 };
 
+const DEFAULT_TITLE = "PROTEGO — Dispecer";
+
+type AudioContextClass = typeof AudioContext;
+
 /**
  * Dispatcher-5 fix (2026-08-05): "audible alert on new mission/SOS
  * arrival — dispatchers don't stare at the screen." No audio asset to
  * host/bundle — a short beep is generated procedurally via the Web
  * Audio API. `urgent` (SOS) uses a higher pitch + a second pulse so it
  * reads as more alarming than a routine new-mission chime.
+ *
+ * F8 fix (2026-08-07, audit-findings.md): a fresh AudioContext starts
+ * "suspended" in most browsers until the page has seen a user gesture —
+ * the original version created one per beep and never checked its
+ * state, so an alert arriving before the dispatcher had clicked
+ * anywhere could fail completely silently. Reuses a single context
+ * (also addresses the audit's minor note about never closing them),
+ * unlocked/resumed on the console's first click/keydown, and the visual
+ * fallback below (title blink + unread badge) covers the case where
+ * sound never gets unlocked at all.
  */
-function playAlertBeep(urgent = false) {
-  try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AudioContextClass();
-    const beep = (delayMs: number, freq: number) => {
-      setTimeout(() => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.35);
-      }, delayMs);
-    };
-    beep(0, urgent ? 1046 : 784);
-    if (urgent) beep(400, 1046);
-  } catch {
-    // Best-effort — a blocked/unavailable AudioContext (e.g. before any
-    // user gesture on the page) is not a reason to break the console.
-  }
+function beepOn(ctx: AudioContext, urgent: boolean) {
+  const schedule = (delayMs: number, freq: number) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    }, delayMs);
+  };
+  schedule(0, urgent ? 1046 : 784);
+  if (urgent) schedule(400, 1046);
 }
 
 /** Dispatcher-2 fix: "waiting since / X min ago" per queue/alert row. */
@@ -58,11 +65,76 @@ export function ConsoleClient() {
   const [tab, setTab] = useState<Tab>("map");
   const [now, setNow] = useState(() => new Date());
   const [dispatcherName, setDispatcherName] = useState<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // F8 fix: unlock/resume the shared AudioContext on the console's first
+  // click or keypress anywhere on the page — most browsers keep a fresh
+  // context suspended until a user gesture happens.
+  useEffect(() => {
+    function unlock() {
+      if (!audioCtxRef.current) {
+        try {
+          const AudioContextCtor =
+            window.AudioContext || (window as unknown as { webkitAudioContext: AudioContextClass }).webkitAudioContext;
+          audioCtxRef.current = new AudioContextCtor();
+        } catch {
+          return;
+        }
+      }
+      if (audioCtxRef.current.state !== "running") {
+        audioCtxRef.current.resume().catch(() => undefined);
+      }
+    }
+    window.addEventListener("click", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  // F8 fix: title-blink + unread-count visual fallback — guaranteed to
+  // work even when sound never gets unlocked (or the tab is muted).
+  useEffect(() => {
+    if (unreadAlerts === 0) {
+      document.title = DEFAULT_TITLE;
+      return;
+    }
+    let flipped = false;
+    const interval = setInterval(() => {
+      document.title = flipped
+        ? DEFAULT_TITLE
+        : `🔴 ${unreadAlerts} ${unreadAlerts === 1 ? "alertă nouă" : "alerte noi"}`;
+      flipped = !flipped;
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+      document.title = DEFAULT_TITLE;
+    };
+  }, [unreadAlerts]);
+
+  const notify = useCallback((urgent: boolean) => {
+    setUnreadAlerts((n) => n + 1);
+    const ctx = audioCtxRef.current;
+    if (ctx && ctx.state === "running") {
+      beepOn(ctx, urgent);
+    }
+    // If sound isn't unlocked yet, it's silently skipped here — the
+    // title blink + badge above are the guaranteed-to-work fallback.
+  }, []);
+
+  function selectTab(key: Tab) {
+    setTab(key);
+    // Switching to the tab that actually shows the new arrival is a
+    // clear enough "I've seen it" signal to clear the badge/title.
+    if (key === "map" || key === "sos") setUnreadAlerts(0);
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -99,6 +171,15 @@ export function ConsoleClient() {
       <div className="mb-3 flex items-center justify-between text-sm text-[var(--text-secondary)]">
         <span>{dispatcherName ? `Dispecer: ${dispatcherName}` : null}</span>
         <div className="flex items-center gap-3">
+          {unreadAlerts > 0 ? (
+            <button
+              onClick={() => setUnreadAlerts(0)}
+              className="animate-pulse rounded-full bg-[var(--danger)] px-3 py-1 text-xs font-semibold text-white"
+              title="Alertă nouă — click pentru a marca drept văzută"
+            >
+              🔴 {unreadAlerts} {unreadAlerts === 1 ? "alertă nouă" : "alerte noi"}
+            </button>
+          ) : null}
           {failedPayments > 0 ? (
             <span className="rounded-full bg-[var(--danger)] px-3 py-1 text-xs font-semibold text-white">
               {failedPayments} {failedPayments === 1 ? "plată eșuată" : "plăți eșuate"}
@@ -113,7 +194,7 @@ export function ConsoleClient() {
         {(Object.keys(TAB_LABEL) as Tab[]).map((key) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => selectTab(key)}
             className={`rounded-md px-3 py-2 text-sm font-semibold ${
               tab === key ? "bg-[var(--gold)] text-[var(--text-on-gold)]" : "text-[var(--text-secondary)]"
             }`}
@@ -123,8 +204,8 @@ export function ConsoleClient() {
         ))}
       </nav>
 
-      {tab === "map" ? <MapQueueTab /> : null}
-      {tab === "sos" ? <SosTab /> : null}
+      {tab === "map" ? <MapQueueTab notify={notify} /> : null}
+      {tab === "sos" ? <SosTab notify={notify} /> : null}
       {tab === "risk" ? <HighRiskTab /> : null}
       {tab === "handover" ? <HandoverTab /> : null}
     </main>
@@ -172,7 +253,7 @@ interface QueueDetail {
   quote_total: number | null;
 }
 
-function MapQueueTab() {
+function MapQueueTab({ notify }: { notify: (urgent: boolean) => void }) {
   const supabase = createClient();
   const [active, setActive] = useState<ActiveMissionRow[]>([]);
   const [queue, setQueue] = useState<QueueRow[]>([]);
@@ -284,7 +365,7 @@ function MapQueueTab() {
     // that first load can be distinguished from "queue really is empty").
     if (knownQueueIds.current !== null) {
       const isNew = newQueue.some((row) => !knownQueueIds.current!.has(row.id));
-      if (isNew) playAlertBeep(false);
+      if (isNew) notify(false);
     }
     knownQueueIds.current = new Set(newQueue.map((row) => row.id));
     setQueue(newQueue);
@@ -537,7 +618,7 @@ interface SosEventRow {
   created_at: string;
 }
 
-function SosTab() {
+function SosTab({ notify }: { notify: (urgent: boolean) => void }) {
   const supabase = createClient();
   const [events, setEvents] = useState<SosEventRow[]>([]);
   const [resolvedToday, setResolvedToday] = useState(0);
@@ -564,7 +645,7 @@ function SosTab() {
     // louder/urgent tone.
     if (knownEventIds.current !== null) {
       const isNew = rows.some((row) => !knownEventIds.current!.has(row.id));
-      if (isNew) playAlertBeep(true);
+      if (isNew) notify(true);
     }
     knownEventIds.current = new Set(rows.map((row) => row.id));
     setEvents(rows);
