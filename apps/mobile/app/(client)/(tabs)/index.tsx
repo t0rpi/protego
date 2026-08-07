@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Button, Card, tokens } from "@protego/ui";
+import { Button, Card, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
+import { ACTIVE_MISSION_STATUSES } from "../../../lib/mission-status";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 
@@ -25,6 +26,26 @@ export default function ClientHomeScreen() {
     { role: string; verification_level: number; full_name: string | null } | null | undefined
   >(undefined);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeMission, setActiveMission] = useState<{ id: string; status: string } | null>(null);
+
+  const loadActiveMission = useCallback(async () => {
+    if (!session) return;
+    const { data } = await supabase
+      .from("missions")
+      .select("id, status")
+      .eq("client_id", session.user.id)
+      .in("status", ACTIVE_MISSION_STATUSES)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setActiveMission(data ?? null);
+  }, [session]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadActiveMission();
+    }, [loadActiveMission])
+  );
 
   const loadProfile = useCallback(async () => {
     if (!session) return;
@@ -56,7 +77,7 @@ export default function ClientHomeScreen() {
   // verification level).
   async function onRefresh() {
     setRefreshing(true);
-    await loadProfile();
+    await Promise.all([loadProfile(), loadActiveMission()]);
     setRefreshing(false);
   }
 
@@ -101,6 +122,24 @@ export default function ClientHomeScreen() {
           {t("home.greetingEvening", { name: profile?.full_name ?? "" })}
         </Text>
         <Text style={styles.greetingSub}>{t("home.greetingSub")}</Text>
+
+        {activeMission ? (
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>{t("home.activeMissionTitle")}</Text>
+            <StatusPill
+              status={
+                (["review", "confirmed", "enroute", "arrived", "active"].includes(activeMission.status)
+                  ? activeMission.status
+                  : "confirmed") as MissionDisplayStatus
+              }
+              label={t(`home.status.${activeMission.status}` as "home.status.review")}
+            />
+            <Button
+              label={t("home.activeMissionCta")}
+              onPress={() => router.push(`/mission/${activeMission.id}`)}
+            />
+          </Card>
+        ) : null}
 
         {profile && profile.verification_level < 2 ? (
           <Card style={styles.card}>

@@ -63,7 +63,17 @@
     "escortDesc": "Însoțire personală 1–2 ore: evenimente, drumuri seara, întâlniri.",
     "hourlyTitle": "Protecție cu ora",
     "hourlyDesc": "Agent dedicat de la 2 ore în sus. Pentru tine, familie sau afacere.",
-    "trust": "Toți agenții sunt atestați IGPR, verificați și asigurați. Misiune monitorizată de dispeceratul PROTEGO de la început până la final."
+    "trust": "Toți agenții sunt atestați IGPR, verificați și asigurați. Misiune monitorizată de dispeceratul PROTEGO de la început până la final.",
+    "activeMissionTitle": "Ai o misiune activă",
+    "activeMissionCta": "Vezi misiunea",
+    "status": {
+      "review": "în verificare",
+      "confirmed": "confirmată",
+      "assigned": "agent alocat",
+      "enroute": "agent în drum",
+      "arrived": "agent a ajuns",
+      "active": "în desfășurare"
+    }
   },
   "tabs": {
     "home": "Acasă",
@@ -327,6 +337,8 @@
   },
   "history": {
     "title": "Istoric misiuni",
+    "activeTitle": "Misiuni în desfășurare",
+    "continueMission": "Vezi misiunea",
     "repeat": "Repetă",
     "invoice": "Factura",
     "invoiceSent": "Factura + raportul PDF, retrimise pe email.",

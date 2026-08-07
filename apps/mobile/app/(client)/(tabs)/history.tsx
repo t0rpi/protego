@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Card, StatusPill, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
+import { ACTIVE_MISSION_STATUSES } from "../../../lib/mission-status";
 
 interface HistoryMission {
   id: string;
@@ -15,18 +16,29 @@ interface HistoryMission {
   total: number | null;
 }
 
+interface ActiveMission {
+  id: string;
+  status: string;
+  destination_address: string | null;
+  pickup_address: string | null;
+  created_at: string;
+}
+
 /**
  * Client History tab (design/HANDOFF.md §5 inventory: "istoric + re-book",
  * i18n history.* keys already existed, unused until this Pass A screen).
- * Past ("done") missions only — active/in-progress ones stay on their
- * own tracking screen, reachable from the Home tab's ongoing-mission
- * state (not built this pass — see Design-2 follow-up notes).
+ * F5 fix (2026-08-07, audit-findings.md): active/in-progress missions
+ * are now listed too, in their own section above the "done" history —
+ * previously this screen only ever queried status='done', so a client
+ * had no way back to an in-review/confirmed/active mission from here at
+ * all if they'd already left its tracking screen.
  */
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { session } = useAuth();
   const [missions, setMissions] = useState<HistoryMission[] | null>(null);
+  const [activeMissions, setActiveMissions] = useState<ActiveMission[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
@@ -35,12 +47,21 @@ export default function HistoryScreen() {
     // `missions` at `null` forever, stranding this screen on the loading
     // spinner — same fix as the Home tab's profile fetch.
     try {
-      const { data: rows } = await supabase
-        .from("missions")
-        .select("id, destination_address, pickup_address, created_at, services(key)")
-        .eq("client_id", session.user.id)
-        .eq("status", "done")
-        .order("created_at", { ascending: false });
+      const [{ data: activeRows }, { data: rows }] = await Promise.all([
+        supabase
+          .from("missions")
+          .select("id, status, destination_address, pickup_address, created_at")
+          .eq("client_id", session.user.id)
+          .in("status", ACTIVE_MISSION_STATUSES)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("missions")
+          .select("id, destination_address, pickup_address, created_at, services(key)")
+          .eq("client_id", session.user.id)
+          .eq("status", "done")
+          .order("created_at", { ascending: false }),
+      ]);
+      setActiveMissions(activeRows ?? []);
 
       const missionIds = (rows ?? []).map((row) => row.id);
       const totalsByMission = new Map<string, number>();
@@ -102,6 +123,32 @@ export default function HistoryScreen() {
       >
         <Text style={styles.title}>{t("history.title")}</Text>
 
+        {activeMissions.length > 0 ? (
+          <>
+            <Text style={styles.sectionLabel}>{t("history.activeTitle")}</Text>
+            {activeMissions.map((mission) => (
+              <Card key={mission.id} style={styles.card}>
+                <StatusPill
+                  status={
+                    (["review", "confirmed", "enroute", "arrived", "active"].includes(mission.status)
+                      ? mission.status
+                      : "confirmed") as "review" | "confirmed" | "enroute" | "arrived" | "active"
+                  }
+                  label={t(`home.status.${mission.status}` as "home.status.review")}
+                />
+                <Text style={styles.address}>{mission.destination_address ?? mission.pickup_address ?? ""}</Text>
+                <View style={styles.actions}>
+                  <Button
+                    label={t("history.continueMission")}
+                    size="sm"
+                    onPress={() => router.push(`/mission/${mission.id}`)}
+                  />
+                </View>
+              </Card>
+            ))}
+          </>
+        ) : null}
+
         {missions === null ? (
           <ActivityIndicator color={tokens.color.base.gold} />
         ) : missions.length === 0 ? (
@@ -146,6 +193,13 @@ const styles = StyleSheet.create({
     color: tokens.color.semantic.textPrimary,
     fontSize: tokens.typography.size.h2,
     fontWeight: "700",
+  },
+  sectionLabel: {
+    color: tokens.color.semantic.textTertiary,
+    fontSize: tokens.typography.size.caption,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: tokens.spacing[2],
   },
   emptyTitle: {
     color: tokens.color.semantic.textPrimary,

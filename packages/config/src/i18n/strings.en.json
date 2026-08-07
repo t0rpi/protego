@@ -63,6 +63,16 @@
     "escortDesc": "Personal accompaniment for 1–2 hours: events, evening walks, meetings.",
     "hourlyTitle": "Hourly Protection",
     "hourlyDesc": "A dedicated agent from 2 hours up. For you, your family or your business.",
+    "activeMissionTitle": "You have an active mission",
+    "activeMissionCta": "View mission",
+    "status": {
+      "review": "under review",
+      "confirmed": "confirmed",
+      "assigned": "agent assigned",
+      "enroute": "agent en route",
+      "arrived": "agent has arrived",
+      "active": "in progress"
+    },
     "trust": "All agents are IGPR-certified, vetted and insured. Every mission is monitored by the PROTEGO dispatch center from start to finish."
   },
   "tabs": {
@@ -327,6 +337,8 @@
   },
   "history": {
     "title": "Mission history",
+    "activeTitle": "In progress",
+    "continueMission": "View mission",
     "repeat": "Repeat",
     "invoice": "Invoice",
     "invoiceSent": "Invoice + PDF report re-sent by email.",
