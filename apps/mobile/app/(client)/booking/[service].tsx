@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -325,12 +325,32 @@ export default function BookingWizardScreen() {
   // first visit. Re-arm it on every focus of the "where" step, as long as
   // the client hasn't already typed/picked their own address — same
   // never-overwrite invariant as the effect above.
+  //
+  // F6 fix (2026-08-07, audit-findings.md): the callback below used to
+  // list pickupAddress/pickupPlaceId in its own dependency array, which
+  // meant useFocusEffect re-ran it on every keystroke, not just on a
+  // real focus/blur transition — a client backspacing the pickup field
+  // to empty (meaning to type a different address) would re-trigger
+  // this mid-edit, silently refilling the field with a GPS position a
+  // moment later. Reading the live values via refs keeps the memoized
+  // callback's identity stable across renders (deps: only `step`), so
+  // React Navigation only invokes it on genuine focus events or an
+  // actual step change — never on a keystroke.
+  const pickupAddressRef = useRef(pickupAddress);
+  const pickupPlaceIdRef = useRef(pickupPlaceId);
+  useEffect(() => {
+    pickupAddressRef.current = pickupAddress;
+  }, [pickupAddress]);
+  useEffect(() => {
+    pickupPlaceIdRef.current = pickupPlaceId;
+  }, [pickupPlaceId]);
+
   useFocusEffect(
     useCallback(() => {
-      if (step === "where" && !pickupAddress && !pickupPlaceId) {
+      if (step === "where" && !pickupAddressRef.current && !pickupPlaceIdRef.current) {
         setGpsStatus("idle");
       }
-    }, [step, pickupAddress, pickupPlaceId])
+    }, [step])
   );
 
   // Client-6 fix (2026-08-05): "when location is OFF, the address field
