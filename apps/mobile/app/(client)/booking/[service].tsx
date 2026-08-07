@@ -3,13 +3,13 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Database } from "@protego/supabase";
-import { Button, QuoteBox, tokens } from "@protego/ui";
+import { Button, Map, QuoteBox, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { bookingStyles as s } from "../../../lib/booking-styles";
 import { PaymentStep } from "../../../lib/payment-step";
 import { PlaceAutocompleteInput } from "../../../lib/place-autocomplete-input";
-import { computeRouteDistanceKm, type PlacePrediction } from "../../../lib/places";
+import { computeRoute, type PlacePrediction } from "../../../lib/places";
 import { getCurrentPickupLocation, promptEnableLocation } from "../../../lib/gps-location";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
@@ -126,6 +126,16 @@ export default function BookingWizardScreen() {
   const [distanceKm, setDistanceKm] = useState("");
   const [distanceLoading, setDistanceLoading] = useState(false);
   const [distanceError, setDistanceError] = useState<string | null>(null);
+
+  // Pass B (2026-08-07): the route-distance call already resolves real
+  // origin/destination coordinates and a route polyline — kept here so
+  // the "where" step can show a live Map preview as soon as both
+  // addresses are confirmed, without a second network call.
+  const [routePreview, setRoutePreview] = useState<{
+    polyline: string | null;
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+  } | null>(null);
 
   // GPS auto-location for pickup (2026-08-04 founder decision) — runs
   // once per visit to the "where" step, only while the field is still
@@ -258,7 +268,11 @@ export default function BookingWizardScreen() {
     if (!isRideForDistance) return;
     const hasPlaceIds = Boolean(pickupPlaceId && destinationPlaceId);
     const hasAddressText = pickupAddress.trim().length >= 5 && destinationAddress.trim().length >= 5;
-    if (!hasPlaceIds && !hasAddressText) return;
+    if (!hasPlaceIds && !hasAddressText) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing the stale preview when an address is emptied/edited is intentional, not a synchronization smell
+      setRoutePreview(null);
+      return;
+    }
 
     let cancelled = false;
     // A deliberate suggestion tap fires immediately; free-typed text
@@ -271,20 +285,25 @@ export default function BookingWizardScreen() {
     const timer = setTimeout(() => {
       setDistanceLoading(true);
       setDistanceError(null);
-      computeRouteDistanceKm({
+      computeRoute({
         originPlaceId: pickupPlaceId,
         destinationPlaceId: destinationPlaceId,
         originAddress: pickupAddress,
         destinationAddress: destinationAddress,
       })
-        .then((km) => {
-          if (!cancelled) setDistanceKm(String(km));
+        .then((route) => {
+          if (cancelled) return;
+          setDistanceKm(String(route.distance_km));
+          setRoutePreview({ polyline: route.polyline, origin: route.origin, destination: route.destination });
         })
         .catch((err) => {
           // Leave distanceKm empty on failure — compute_quote()'s
           // default_distance_km fallback covers this, per the founder's
           // explicit instruction that it stays only as a safety net.
-          if (!cancelled) setDistanceError(err instanceof Error ? err.message : "route lookup failed");
+          if (!cancelled) {
+            setDistanceError(err instanceof Error ? err.message : "route lookup failed");
+            setRoutePreview(null);
+          }
         })
         .finally(() => {
           if (!cancelled) setDistanceLoading(false);
@@ -645,6 +664,23 @@ export default function BookingWizardScreen() {
                   <Text style={s.note}>{t("booking.distanceComputed", { km: distanceKm })}</Text>
                 ) : distanceError ? (
                   <Text style={s.note}>{t("booking.distanceUnavailable")}</Text>
+                ) : null}
+                {/* Pass B (2026-08-07): live route preview once both
+                    addresses are confirmed — design/HANDOFF.md §6 Map slot. */}
+                {routePreview?.origin && routePreview.destination ? (
+                  <Map
+                    height={180}
+                    markers={[
+                      { id: "origin", kind: "origin", lat: routePreview.origin.lat, lng: routePreview.origin.lng },
+                      {
+                        id: "destination",
+                        kind: "destination",
+                        lat: routePreview.destination.lat,
+                        lng: routePreview.destination.lng,
+                      },
+                    ]}
+                    encodedPolyline={routePreview.polyline}
+                  />
                 ) : null}
               </>
             ) : (
