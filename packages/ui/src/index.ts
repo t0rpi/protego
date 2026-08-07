@@ -4,9 +4,10 @@ export type { ProtegoTokens } from "./tokens";
 // Component library (design/HANDOFF.md §3), Pass A (2026-08-04): the
 // highest-reuse primitives, applied to the tab bar + a few exemplar
 // screens first. SOSButton, OptionCard, Counter, TopBar/Stepper,
-// ServiceCard/AgentCard/TrustBar, Toast/Timeline/EmptyState/Skeleton and
-// the Map slot are later passes (see that work's own commit notes) —
-// today's screens keep using tokens directly until each is migrated.
+// ServiceCard/AgentCard/TrustBar, Toast/Timeline/EmptyState/Skeleton
+// are later passes (see that work's own commit notes) — today's
+// screens keep using tokens directly until each is migrated. The Map
+// slot (§6) was added in Pass B (2026-08-07).
 export { Button } from "./components/Button";
 export type { ButtonVariant, ButtonSize } from "./components/Button";
 export { Card, RowLine } from "./components/Card";
@@ -20,3 +21,5 @@ export { Chip } from "./components/Chip";
 export { Field } from "./components/Field";
 export { TabBar } from "./components/TabBar";
 export type { TabBarItem } from "./components/TabBar";
+export { Map } from "./components/Map";
+export type { MapMarker, MapMarkerKind } from "./components/Map";

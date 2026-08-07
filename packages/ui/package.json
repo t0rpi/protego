@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet — packages/ui\" && exit 0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@protego/domain": "workspace:*"
+  },
   "peerDependencies": {
     "react": "*",
     "react-native": "*"
