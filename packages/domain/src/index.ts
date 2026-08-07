@@ -52,3 +52,6 @@ export {
   TRACKING_POSITION_LATENCY_TARGET_P95_MS,
   TRACKING_STATUS_LATENCY_TARGET_P95_MS,
 } from "./tracking/constants";
+
+export { decodePolyline, computeMapBounds, projectToUnit } from "./tracking/map";
+export type { MapMarker, MapMarkerKind, MapProps, LatLng, MapBounds } from "./tracking/map";

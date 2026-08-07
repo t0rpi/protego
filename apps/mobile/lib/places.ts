@@ -68,12 +68,14 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
  * the same default-estimate quote for every address (founder QA
  * finding, 2026-08-03).
  */
-export async function computeRouteDistanceKm(params: {
+interface RouteEndpointParams {
   originPlaceId?: string | null;
   destinationPlaceId?: string | null;
   originAddress?: string;
   destinationAddress?: string;
-}): Promise<number> {
+}
+
+export async function computeRouteDistanceKm(params: RouteEndpointParams): Promise<number> {
   const { data, error } = await supabase.functions.invoke("route-distance", {
     body: {
       origin_place_id: params.originPlaceId ?? undefined,
@@ -84,4 +86,32 @@ export async function computeRouteDistanceKm(params: {
   });
   if (error) throw error;
   return data.distance_km;
+}
+
+export interface RouteResult {
+  distance_km: number;
+  /** Google encoded polyline — decode with @protego/domain's decodePolyline(). */
+  polyline: string | null;
+  origin: { lat: number; lng: number } | null;
+  destination: { lat: number; lng: number } | null;
+}
+
+/**
+ * Pass B: the same route-distance Edge Function, but returns the full
+ * response (polyline + resolved origin/destination coordinates) for the
+ * booking route step's Map slot preview — not just the distance number
+ * computeRouteDistanceKm() extracts. One request either way; this is
+ * just a richer read of the same response.
+ */
+export async function computeRoute(params: RouteEndpointParams): Promise<RouteResult> {
+  const { data, error } = await supabase.functions.invoke("route-distance", {
+    body: {
+      origin_place_id: params.originPlaceId ?? undefined,
+      destination_place_id: params.destinationPlaceId ?? undefined,
+      origin_address: params.originAddress,
+      destination_address: params.destinationAddress,
+    },
+  });
+  if (error) throw error;
+  return data;
 }

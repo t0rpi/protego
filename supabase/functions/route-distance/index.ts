@@ -66,8 +66,13 @@ Deno.serve(async (req) => {
         "X-Goog-Api-Key": apiKey,
         // Routes API returns no fields at all without an explicit field
         // mask (cost-control default) — this is the one well-known
-        // gotcha with this endpoint.
-        "X-Goog-FieldMask": "routes.distanceMeters",
+        // gotcha with this endpoint. Pass B: also request the encoded
+        // polyline + resolved leg endpoints (works whether the client
+        // gave us a place_id or a typed address — Routes API resolves
+        // either into real coordinates in the response, so we don't
+        // need a second geocode call just to get pins for the Map slot).
+        "X-Goog-FieldMask":
+          "routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation",
       },
       body: JSON.stringify({ origin, destination, travelMode: "DRIVE" }),
     });
@@ -77,13 +82,23 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Routes API error: ${data.error?.message ?? res.status}` }, 502);
     }
 
-    const meters = data.routes?.[0]?.distanceMeters;
+    const route = data.routes?.[0];
+    const meters = route?.distanceMeters;
     if (typeof meters !== "number") {
       return jsonResponse({ error: "Routes API returned no distance" }, 502);
     }
 
     const distanceKm = Math.round((meters / 1000) * 10) / 10;
-    return jsonResponse({ distance_km: distanceKm });
+    const leg = route.legs?.[0];
+    const startLatLng = leg?.startLocation?.latLng;
+    const endLatLng = leg?.endLocation?.latLng;
+
+    return jsonResponse({
+      distance_km: distanceKm,
+      polyline: route.polyline?.encodedPolyline ?? null,
+      origin: startLatLng ? { lat: startLatLng.latitude, lng: startLatLng.longitude } : null,
+      destination: endLatLng ? { lat: endLatLng.latitude, lng: endLatLng.longitude } : null,
+    });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "unknown error" }, 500);
   }
