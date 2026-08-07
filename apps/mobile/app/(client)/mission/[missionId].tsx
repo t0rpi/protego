@@ -51,7 +51,14 @@ export default function ClientMissionScreen() {
   const { session } = useAuth();
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
 
-  const [mission, setMission] = useState<MissionInfo | null>(null);
+  // P0 fix (2026-08-07, founder QA): `mission` used to double as both
+  // "still loading" and "load failed" (both falsy), so any query error
+  // or empty result left this screen on the spinner forever, with
+  // nothing telling the client (or us) that anything had gone wrong.
+  // `undefined` = never loaded yet, `null` = a load was attempted and
+  // failed/found nothing — only the former shows the spinner now.
+  const [mission, setMission] = useState<MissionInfo | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<{ lines: ReceiptLine[]; total: number } | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [position, setPosition] = useState<{ lat: number; lng: number; recorded_at: string } | null>(null);
@@ -72,22 +79,34 @@ export default function ClientMissionScreen() {
 
   const load = useCallback(async () => {
     if (!missionId || !session) return;
+    setLoadError(null);
 
-    const { data: m } = await supabase
+    // P0 fix: a genuinely hung fetch (bad network, dropped connection)
+    // could otherwise leave this screen spinning with no way out at
+    // all — same defensive-timeout pattern already used in
+    // auth-context.tsx's getSession() call.
+    const missionQuery = supabase
       .from("missions")
       .select("status, pickup_address, destination_address, verification_code, mobility, city, wait_at_destination_minutes, services(key)")
       .eq("id", missionId)
       .single();
-    setMission(
-      m
-        ? {
-            ...m,
-            service_key: (m as unknown as { services: { key: string } | null }).services?.key ?? null,
-          }
-        : null
+    const timeout = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: { message: "timeout" } }), 10000)
     );
+    const { data: m, error: missionError } = await Promise.race([missionQuery, timeout]);
 
-    if (m && ["enroute", "arrived", "active"].includes(m.status)) {
+    if (missionError || !m) {
+      if (__DEV__) console.error("mission load failed:", missionId, missionError);
+      setMission(null);
+      setLoadError(missionError?.message ?? "Misiunea nu a fost găsită.");
+      return;
+    }
+    setMission({
+      ...m,
+      service_key: (m as unknown as { services: { key: string } | null }).services?.key ?? null,
+    });
+
+    if (["enroute", "arrived", "active"].includes(m.status)) {
       const { data: loc } = await supabase
         .from("mission_latest_location")
         .select("lat, lng, recorded_at")
@@ -287,10 +306,23 @@ export default function ClientMissionScreen() {
     setCancelBusy(false);
   }
 
-  if (!mission) {
+  if (mission === undefined) {
     return (
       <View style={s.container}>
         <ActivityIndicator color={tokens.color.base.gold} />
+      </View>
+    );
+  }
+
+  if (mission === null) {
+    return (
+      <View style={s.container}>
+        <ScrollView contentContainerStyle={s.scroll}>
+          <Text style={s.title}>{t("tracking.loadErrorTitle")}</Text>
+          <Text style={s.intro}>{loadError ?? t("tracking.loadErrorBody")}</Text>
+          <Button label={t("tracking.retry")} onPress={load} />
+          <Button label={t("common.back")} variant="ghost" onPress={() => router.replace("/")} />
+        </ScrollView>
       </View>
     );
   }
@@ -353,7 +385,7 @@ export default function ClientMissionScreen() {
           </>
         ) : (
           <View style={[s.card, { backgroundColor: "#101216", alignItems: "center", minHeight: 140, justifyContent: "center" }]}>
-            <Text style={s.note}>{t("common.later")}</Text>
+            <Text style={s.note}>{t("tracking.positionPending")}</Text>
           </View>
         )}
 
