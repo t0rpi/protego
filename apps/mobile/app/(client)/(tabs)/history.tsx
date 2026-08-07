@@ -6,6 +6,8 @@ import { Button, Card, StatusPill, tokens } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { ACTIVE_MISSION_STATUSES } from "../../../lib/mission-status";
+import { cancelMissionPayment } from "../../../lib/payments";
+import { SERVICE_TITLE_KEY } from "../../../lib/enum-labels";
 
 interface HistoryMission {
   id: string;
@@ -22,7 +24,19 @@ interface ActiveMission {
   destination_address: string | null;
   pickup_address: string | null;
   created_at: string;
+  service_key: string;
 }
+
+// P2g QA fix: a mission still in one of these statuses never got an
+// agent — the same set the tracking screen already allows cancelling
+// from (mission/[missionId].tsx's cancelMission()). A client had no way
+// to clear a stuck one except navigating back into that screen first;
+// surfacing the same, already-approved cancel action directly on the
+// History card fixes the actual complaint (stale test missions with
+// nothing to distinguish them piling up as "active" forever) without
+// inventing a new auto-expiry policy, which is a business decision
+// (timing, payment-hold handling) this fix doesn't make unilaterally.
+const CANCELABLE_STATUSES = ["review", "confirmed"];
 
 /**
  * Client History tab (design/HANDOFF.md §5 inventory: "istoric + re-book",
@@ -40,6 +54,7 @@ export default function HistoryScreen() {
   const [missions, setMissions] = useState<HistoryMission[] | null>(null);
   const [activeMissions, setActiveMissions] = useState<ActiveMission[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -50,7 +65,7 @@ export default function HistoryScreen() {
       const [{ data: activeRows }, { data: rows }] = await Promise.all([
         supabase
           .from("missions")
-          .select("id, status, destination_address, pickup_address, created_at")
+          .select("id, status, destination_address, pickup_address, created_at, services(key)")
           .eq("client_id", session.user.id)
           .in("status", ACTIVE_MISSION_STATUSES)
           .order("created_at", { ascending: false }),
@@ -61,7 +76,16 @@ export default function HistoryScreen() {
           .eq("status", "done")
           .order("created_at", { ascending: false }),
       ]);
-      setActiveMissions(activeRows ?? []);
+      setActiveMissions(
+        (activeRows ?? []).map((row) => ({
+          id: row.id,
+          status: row.status,
+          destination_address: row.destination_address,
+          pickup_address: row.pickup_address,
+          created_at: row.created_at,
+          service_key: (row as unknown as { services: { key: string } | null }).services?.key ?? "",
+        }))
+      );
 
       const missionIds = (rows ?? []).map((row) => row.id);
       const totalsByMission = new Map<string, number>();
@@ -113,6 +137,19 @@ export default function HistoryScreen() {
     setRefreshing(false);
   }
 
+  async function cancelActive(missionId: string) {
+    setCancelingId(missionId);
+    try {
+      await cancelMissionPayment(missionId);
+      await load();
+    } catch {
+      // Best-effort — a failed cancel here just leaves the card as-is;
+      // the client can retry, same as the tracking screen's own cancel.
+    } finally {
+      setCancelingId(null);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -136,13 +173,29 @@ export default function HistoryScreen() {
                   }
                   label={t(`home.status.${mission.status}` as "home.status.review")}
                 />
+                <Text style={styles.serviceLabel}>
+                  {SERVICE_TITLE_KEY[mission.service_key] ? t(SERVICE_TITLE_KEY[mission.service_key]) : ""}
+                </Text>
                 <Text style={styles.address}>{mission.destination_address ?? mission.pickup_address ?? ""}</Text>
+                <Text style={styles.date}>
+                  {new Date(mission.created_at).toLocaleDateString()}{" "}
+                  {new Date(mission.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
                 <View style={styles.actions}>
                   <Button
                     label={t("history.continueMission")}
                     size="sm"
                     onPress={() => router.push(`/mission/${mission.id}`)}
                   />
+                  {CANCELABLE_STATUSES.includes(mission.status) ? (
+                    <Button
+                      label={t("common.cancel")}
+                      size="sm"
+                      variant="ghost"
+                      loading={cancelingId === mission.id}
+                      onPress={() => cancelActive(mission.id)}
+                    />
+                  ) : null}
                 </View>
               </Card>
             ))}
@@ -213,6 +266,12 @@ const styles = StyleSheet.create({
   card: {
     gap: tokens.spacing[2],
   },
+  serviceLabel: {
+    color: tokens.color.base.gold,
+    fontSize: tokens.typography.size.caption,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
   address: {
     color: tokens.color.semantic.textPrimary,
     fontSize: tokens.typography.size.body,
@@ -229,5 +288,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
+    gap: tokens.spacing[2],
   },
 });
