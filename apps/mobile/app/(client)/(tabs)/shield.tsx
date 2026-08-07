@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, Pressable, Animated, ActivityIndicator, Alert } from "react-native";
+import { StyleSheet, Text, View, Pressable, Animated, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { tokens } from "@protego/ui";
@@ -81,8 +81,15 @@ export default function ShieldHomeScreen() {
 
   if (!session) return null;
 
+  // P2j QA fix: this screen was a plain View with no ScrollView at all —
+  // on shorter screens (or with larger system font scaling) the content
+  // (SOS button + 3 tool cards) overflowed the fixed viewport with no
+  // way to reach the rest, so the last tool card ("Fake Call") got cut
+  // off. Same container+ScrollView split every other tab screen already
+  // uses; content/layout is otherwise unchanged.
   return (
     <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.badge}>{t("shield.badge")}</Text>
 
       <Pressable
@@ -125,17 +132,22 @@ export default function ShieldHomeScreen() {
         <Text style={styles.toolTitle}>{t("shield.fakeTitle")}</Text>
         <Text style={styles.toolDesc}>{t("shield.fakeDesc")}</Text>
       </Pressable>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: tokens.color.base.ink,
+  },
+  scroll: {
     flexGrow: 1,
     alignItems: "center",
-    backgroundColor: tokens.color.base.ink,
     gap: tokens.spacing[4],
     padding: tokens.spacing[6],
+    paddingBottom: tokens.spacing[10],
   },
   badge: {
     color: tokens.color.base.gold,
