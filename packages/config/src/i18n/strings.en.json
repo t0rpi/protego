@@ -460,7 +460,11 @@
     "valid": "valid",
     "renew": "Renew",
     "signed": "signed",
-    "blockedNote": "availability blocked for new missions until renewal"
+    "blockedNote": "availability blocked for new missions until renewal",
+    "accountStatusInReview": "Account under review",
+    "accountStatusApproved": "Account approved",
+    "accountStatusBlocked": "Account blocked",
+    "accountStatusUnknown": "Unknown status"
   },
   "dispatcher": {
     "navMap": "Map & queues",

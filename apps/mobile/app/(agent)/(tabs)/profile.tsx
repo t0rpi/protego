@@ -8,6 +8,7 @@ import { useAuth } from "../../../lib/auth-context";
 interface AgentProfileRow {
   status: string;
   rating: number | null;
+  is_available: boolean;
 }
 
 /**
@@ -28,12 +29,12 @@ export default function AgentProfileScreen() {
     // spinner — same fix as the client Home tab's profile fetch.
     supabase
       .from("agents")
-      .select("status, rating")
+      .select("status, rating, is_available")
       .eq("id", session.user.id)
       .single()
       .then(
         ({ data }) => setAgent(data),
-        () => setAgent({ status: "unknown", rating: null })
+        () => setAgent({ status: "unknown", rating: null, is_available: false })
       );
   }, [session]);
 
@@ -52,7 +53,36 @@ export default function AgentProfileScreen() {
 
         <Card style={styles.card}>
           <Text style={styles.email}>{session?.user.email}</Text>
-          <Badge label={agent.status === "active" ? t("agentApp.available") : agent.status} tone={agent.status === "active" ? "gold" : "neutral"} check={agent.status === "active"} />
+          {/* P2h QA fix: this badge used to key off agent.status (account
+              approval state — in_review/approved/active/blocked), not
+              agent.is_available (the actual availability toggle), while
+              showing agentApp.available ("Ești disponibil") as its label
+              — so an active but toggled-OFF agent still saw a green
+              "available" checkmark here, contradicting the Home tab's
+              own toggle card. Account status and availability are two
+              different things; this now shows each correctly instead of
+              mislabeling one as the other. */}
+          {agent.status === "active" ? (
+            <Badge
+              label={agent.is_available ? t("agentApp.available") : t("agentApp.unavailable")}
+              tone={agent.is_available ? "gold" : "neutral"}
+              check={agent.is_available}
+            />
+          ) : (
+            <Badge
+              label={t(
+                agent.status === "in_review"
+                  ? "agentApp.accountStatusInReview"
+                  : agent.status === "approved"
+                    ? "agentApp.accountStatusApproved"
+                    : agent.status === "blocked"
+                      ? "agentApp.accountStatusBlocked"
+                      : "agentApp.accountStatusUnknown"
+              )}
+              tone="neutral"
+              check={false}
+            />
+          )}
           {agent.rating ? <Text style={styles.rating}>★ {agent.rating}</Text> : null}
         </Card>
 

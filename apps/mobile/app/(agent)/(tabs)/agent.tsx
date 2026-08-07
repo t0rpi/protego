@@ -195,7 +195,13 @@ export default function AgentHomeScreen() {
   return (
     <View style={s.container}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.title}>{t("common.appName")} — {t("agentApp.available")}</Text>
+        {/* P2h QA fix: this used to always append agentApp.available
+            ("Ești disponibil") regardless of agent.is_available — a
+            hardcoded claim in the header that could directly contradict
+            the toggle card right below it, which does read the real
+            state. Availability now has exactly one displayed source of
+            truth (the toggle card); the header is just the app name. */}
+        <Text style={s.title}>{t("common.appName")}</Text>
 
         {agent ? (
           <>

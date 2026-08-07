@@ -460,7 +460,11 @@
     "valid": "valid",
     "renew": "Reînnoiește",
     "signed": "semnat",
-    "blockedNote": "disponibilitate blocată pentru misiuni noi până la reînnoire"
+    "blockedNote": "disponibilitate blocată pentru misiuni noi până la reînnoire",
+    "accountStatusInReview": "Cont în verificare",
+    "accountStatusApproved": "Cont aprobat",
+    "accountStatusBlocked": "Cont blocat",
+    "accountStatusUnknown": "Stare necunoscută"
   },
   "dispatcher": {
     "navMap": "Hartă & cozi",
