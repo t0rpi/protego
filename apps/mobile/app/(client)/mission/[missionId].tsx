@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Disclaimer112, RowLine, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
+import { Button, Card, Disclaimer112, Map, RowLine, StatusPill, tokens, type MissionDisplayStatus } from "@protego/ui";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { cancelMissionPayment } from "../../../lib/payments";
+import { computeRoute, geocodeAddress } from "../../../lib/places";
 import { bookingStyles as s } from "../../../lib/booking-styles";
 import { OverageButton } from "../../../lib/overage-button";
 import { ContinueRideButton } from "../../../lib/continue-ride-button";
@@ -38,10 +39,11 @@ const SOS_HOLD_MS = 3000;
 /**
  * Client's live mission screen (design `tracking.*`/`chat.*`/`sos.*`) —
  * reached from the booking wizard's result screen once a mission is
- * confirmed. The "map" here is the provider-agnostic placeholder
- * HANDOFF.md §6 explicitly allows ("styled placeholder layer is
- * acceptable, no paid map key required yet") — a dark card showing the
- * latest known coordinate and a pulsing dot, not a real interactive map.
+ * confirmed. Pass B (2026-08-07): now uses the real Map slot component
+ * (design/HANDOFF.md §6) — pickup/destination pins + route line
+ * (geocoded/computed once from the mission's stored addresses, since
+ * missions only persist text addresses, not coordinates) plus the
+ * agent's live position from mission_latest_location.
  */
 export default function ClientMissionScreen() {
   const { t } = useTranslation();
@@ -61,6 +63,12 @@ export default function ClientMissionScreen() {
   const [error, setError] = useState<string | null>(null);
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdStart = useRef<number>(0);
+  const [routeInfo, setRouteInfo] = useState<{
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+    polyline: string | null;
+  } | null>(null);
+  const routeFetchKeyRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!missionId || !session) return;
@@ -142,6 +150,49 @@ export default function ClientMissionScreen() {
       load();
     }, [load])
   );
+
+  // Pass B: geocode/route-compute once per distinct address pair, not
+  // on every load()/focus cycle — missions only store text addresses,
+  // never coordinates, so this is the one place that turns them into
+  // pins for the Map slot. Cached via a ref key so a poll/refocus that
+  // re-fetches the same mission row doesn't re-call Google every time.
+  useEffect(() => {
+    const pickup = mission?.pickup_address;
+    const destination = mission?.destination_address;
+    if (!pickup) {
+      routeFetchKeyRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing stale route info when the address disappears (e.g. mission not yet loaded) is intentional
+      setRouteInfo(null);
+      return;
+    }
+    const key = `${pickup}|${destination ?? ""}`;
+    if (routeFetchKeyRef.current === key) return;
+    routeFetchKeyRef.current = key;
+
+    let cancelled = false;
+    if (destination) {
+      computeRoute({ originAddress: pickup, destinationAddress: destination })
+        .then((route) => {
+          if (!cancelled) setRouteInfo(route);
+        })
+        .catch(() => {
+          if (!cancelled) setRouteInfo(null);
+        });
+    } else {
+      geocodeAddress(pickup)
+        .then((result) => {
+          if (!cancelled) {
+            setRouteInfo(result ? { origin: { lat: result.lat, lng: result.lng }, destination: null, polyline: null } : null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setRouteInfo(null);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [mission?.pickup_address, mission?.destination_address]);
 
   async function sendMessage() {
     if (!missionId || !session || !messageBody.trim()) return;
@@ -272,26 +323,39 @@ export default function ClientMissionScreen() {
           <Text style={s.title}>{mission.status}</Text>
         )}
 
-        <View style={[s.card, { backgroundColor: "#101216", alignItems: "center", minHeight: 140, justifyContent: "center" }]}>
-          {position ? (
-            <>
-              <View
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: tokens.color.base.gold,
-                }}
-              />
-              <Text style={[s.note, { marginTop: tokens.spacing[2] }]}>
-                {position.lat.toFixed(4)}, {position.lng.toFixed(4)}
-              </Text>
+        {routeInfo?.origin || position ? (
+          <>
+            <Map
+              height={200}
+              markers={[
+                ...(routeInfo?.origin
+                  ? [{ id: "origin", kind: "origin" as const, lat: routeInfo.origin.lat, lng: routeInfo.origin.lng }]
+                  : []),
+                ...(routeInfo?.destination
+                  ? [
+                      {
+                        id: "destination",
+                        kind: "destination" as const,
+                        lat: routeInfo.destination.lat,
+                        lng: routeInfo.destination.lng,
+                      },
+                    ]
+                  : []),
+                ...(position
+                  ? [{ id: "agent", kind: "agent" as const, lat: position.lat, lng: position.lng }]
+                  : []),
+              ]}
+              encodedPolyline={routeInfo?.polyline ?? null}
+            />
+            {position ? (
               <Text style={s.note}>{new Date(position.recorded_at).toLocaleTimeString()}</Text>
-            </>
-          ) : (
+            ) : null}
+          </>
+        ) : (
+          <View style={[s.card, { backgroundColor: "#101216", alignItems: "center", minHeight: 140, justifyContent: "center" }]}>
             <Text style={s.note}>{t("common.later")}</Text>
-          )}
-        </View>
+          </View>
+        )}
 
         {mission.verification_code ? (
           <Text style={s.quoteTotal}>{mission.verification_code}</Text>
