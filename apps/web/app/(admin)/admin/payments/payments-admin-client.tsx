@@ -36,13 +36,26 @@ export function PaymentsAdminClient() {
     capture: payments.filter((p) => p.type === "capture" && p.status === "succeeded").reduce((s, p) => s + Number(p.amount), 0),
     refund: payments.filter((p) => p.type === "refund").length,
     overage: payments.filter((p) => p.type === "overage_auth" && p.status === "succeeded").reduce((s, p) => s + Number(p.amount), 0),
+    // F1 fix: a failed capture must never be discoverable only by
+    // opening this page and reading every row — this tile plus the
+    // per-row highlight below make it impossible to miss.
+    failedCount: payments.filter((p) => p.status === "failed").length,
   };
 
   return (
     <main className="min-h-screen p-8 text-[var(--text-primary)]">
       <h1 className="mb-6 text-2xl font-bold">Plăți — privire de ansamblu</h1>
 
-      <div className="mb-6 grid grid-cols-4 gap-4 text-center">
+      {totals.failedCount > 0 ? (
+        <div className="mb-6 rounded-md border border-[var(--danger)] bg-[var(--danger)]/10 p-4">
+          <p className="font-semibold text-[var(--danger)]">
+            {totals.failedCount} {totals.failedCount === 1 ? "plată eșuată" : "plăți eșuate"} — necesită reîncercare
+            manuală.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mb-6 grid grid-cols-5 gap-4 text-center">
         <div className="rounded-md border border-[var(--border)] p-4">
           <p className="text-xl font-bold">{totals.auth.toFixed(2)} lei</p>
           <p className="text-xs text-[var(--text-secondary)]">Preautorizări active</p>
@@ -58,6 +71,16 @@ export function PaymentsAdminClient() {
         <div className="rounded-md border border-[var(--border)] p-4">
           <p className="text-xl font-bold">{totals.overage.toFixed(2)} lei</p>
           <p className="text-xs text-[var(--text-secondary)]">Prelungiri (overage)</p>
+        </div>
+        <div
+          className={`rounded-md border p-4 ${
+            totals.failedCount > 0 ? "border-[var(--danger)]" : "border-[var(--border)]"
+          }`}
+        >
+          <p className={`text-xl font-bold ${totals.failedCount > 0 ? "text-[var(--danger)]" : ""}`}>
+            {totals.failedCount}
+          </p>
+          <p className="text-xs text-[var(--text-secondary)]">Plăți eșuate</p>
         </div>
       </div>
 
@@ -88,14 +111,19 @@ export function PaymentsAdminClient() {
         </thead>
         <tbody>
           {filtered.map((p) => (
-            <tr key={p.id} className="border-b border-[var(--border)]">
+            <tr
+              key={p.id}
+              className={`border-b border-[var(--border)] ${p.status === "failed" ? "bg-[var(--danger)]/10" : ""}`}
+            >
               <td className="py-2">{new Date(p.created_at).toLocaleString()}</td>
               <td className="py-2">#{p.mission_id.slice(0, 8)}</td>
               <td className="py-2">{p.type}</td>
               <td className="py-2">
                 {p.amount} {p.currency}
               </td>
-              <td className="py-2">{p.status}</td>
+              <td className={`py-2 ${p.status === "failed" ? "font-semibold text-[var(--danger)]" : ""}`}>
+                {p.status}
+              </td>
               <td className="py-2 text-xs text-[var(--text-secondary)]">{p.stripe_payment_intent_id}</td>
             </tr>
           ))}

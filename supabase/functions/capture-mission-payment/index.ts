@@ -51,7 +51,18 @@ Deno.serve(async (req) => {
 
     const stripe = getStripeClient();
     const results: Record<string, unknown> = {};
+    const failures: string[] = [];
 
+    // F1 fix (2026-08-07): a capture failure here previously only ever
+    // surfaced as a console.error() on the agent's phone (audit-
+    // findings.md F1) — Stripe's payment_intent.payment_failed webhook
+    // covers *async* failures, but a capture that's rejected synchronously
+    // by the Stripe API (e.g. "amount_to_capture exceeds capturable
+    // amount", an already-canceled PI) never fires that webhook at all.
+    // record_payment_event(..., 'failed') is called directly here so the
+    // failure is guaranteed to land in `payments` — and therefore on the
+    // admin payments overview and the dispatcher console flag — no
+    // matter what happens to the agent's app afterward.
     if (authPayment) {
       const { data: finalQuote } = await supabase
         .from("quotes")
@@ -67,10 +78,21 @@ Deno.serve(async (req) => {
         Number(authPayment.amount)
       );
 
-      const captured = await stripe.paymentIntents.capture(authPayment.stripe_payment_intent_id, {
-        amount_to_capture: Math.round(captureAmount * 100),
-      });
-      results.capture = { id: captured.id, status: captured.status, amount: captureAmount };
+      try {
+        const captured = await stripe.paymentIntents.capture(authPayment.stripe_payment_intent_id, {
+          amount_to_capture: Math.round(captureAmount * 100),
+        });
+        results.capture = { id: captured.id, status: captured.status, amount: captureAmount };
+      } catch (captureError) {
+        await supabase.rpc("record_payment_event", {
+          p_mission_id: mission_id,
+          p_type: "capture",
+          p_stripe_payment_intent_id: authPayment.stripe_payment_intent_id,
+          p_amount: captureAmount,
+          p_status: "failed",
+        });
+        failures.push(captureError instanceof Error ? captureError.message : "capture failed");
+      }
     }
 
     const { data: overagePayments } = await supabase
@@ -81,8 +103,23 @@ Deno.serve(async (req) => {
       .eq("status", "requires_capture");
 
     for (const overage of overagePayments ?? []) {
-      const captured = await stripe.paymentIntents.capture(overage.stripe_payment_intent_id);
-      results[`overage_${overage.stripe_payment_intent_id}`] = { id: captured.id, status: captured.status };
+      try {
+        const captured = await stripe.paymentIntents.capture(overage.stripe_payment_intent_id);
+        results[`overage_${overage.stripe_payment_intent_id}`] = { id: captured.id, status: captured.status };
+      } catch (captureError) {
+        await supabase.rpc("record_payment_event", {
+          p_mission_id: mission_id,
+          p_type: "overage_auth",
+          p_stripe_payment_intent_id: overage.stripe_payment_intent_id,
+          p_amount: overage.amount,
+          p_status: "failed",
+        });
+        failures.push(captureError instanceof Error ? captureError.message : "overage capture failed");
+      }
+    }
+
+    if (failures.length > 0) {
+      return jsonResponse({ ok: false, results, failures }, 502);
     }
 
     return jsonResponse({ ok: true, results });

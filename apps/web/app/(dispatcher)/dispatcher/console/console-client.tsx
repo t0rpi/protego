@@ -73,13 +73,41 @@ export function ConsoleClient() {
     });
   }, []);
 
+  // F1 fix (2026-08-07): a failed capture must be visible to whichever
+  // dispatcher is on shift, not just discoverable by an admin who
+  // happens to open /admin/payments. Dispatchers already have SELECT on
+  // `payments` via RLS ("dispatcher and admin can read all payments",
+  // 20260731130003_payments.sql) — this is a lightweight count, not a
+  // full page, so it doesn't need the admin-only payments route.
+  const [failedPayments, setFailedPayments] = useState(0);
+  useEffect(() => {
+    const supabase = createClient();
+    async function checkFailedPayments() {
+      const { count } = await supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed");
+      setFailedPayments(count ?? 0);
+    }
+    checkFailedPayments();
+    const interval = setInterval(checkFailedPayments, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <main className="min-h-screen p-6 text-[var(--text-primary)]">
       <div className="mb-3 flex items-center justify-between text-sm text-[var(--text-secondary)]">
         <span>{dispatcherName ? `Dispecer: ${dispatcherName}` : null}</span>
-        <span className="font-mono text-base text-[var(--text-primary)]">
-          {now.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-        </span>
+        <div className="flex items-center gap-3">
+          {failedPayments > 0 ? (
+            <span className="rounded-full bg-[var(--danger)] px-3 py-1 text-xs font-semibold text-white">
+              {failedPayments} {failedPayments === 1 ? "plată eșuată" : "plăți eșuate"}
+            </span>
+          ) : null}
+          <span className="font-mono text-base text-[var(--text-primary)]">
+            {now.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </span>
+        </div>
       </div>
       <nav className="mb-6 flex gap-2 border-b border-[var(--border)] pb-3">
         {(Object.keys(TAB_LABEL) as Tab[]).map((key) => (
