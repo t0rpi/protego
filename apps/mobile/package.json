@@ -16,6 +16,7 @@
   "dependencies": {
     "@expo-google-fonts/cinzel": "^0.4.2",
     "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo/vector-icons": "^15.1.1",
     "@protego/config": "workspace:*",
     "@protego/domain": "workspace:*",
     "@protego/supabase": "workspace:*",
