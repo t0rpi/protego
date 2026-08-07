@@ -11,6 +11,7 @@ import { PaymentStep } from "../../../lib/payment-step";
 import { PlaceAutocompleteInput } from "../../../lib/place-autocomplete-input";
 import { computeRoute, type PlacePrediction } from "../../../lib/places";
 import { getCurrentPickupLocation, promptEnableLocation } from "../../../lib/gps-location";
+import { SERVICE_TITLE_KEY } from "../../../lib/enum-labels";
 
 type ServiceKey = "protect_ride" | "escort" | "hourly";
 type Mobility = Database["public"]["Enums"]["mission_mobility"];
@@ -639,7 +640,7 @@ export default function BookingWizardScreen() {
   return (
     <View style={s.container}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.stepLabel}>{serviceKey}</Text>
+        <Text style={s.stepLabel}>{t(SERVICE_TITLE_KEY[serviceKey])}</Text>
 
         {step === "where" && (
           <>

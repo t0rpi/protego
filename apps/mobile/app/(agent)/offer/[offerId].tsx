@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { secondsUntilOfferExpires } from "@protego/domain";
 import { supabase } from "../../../lib/supabase";
 import { bookingStyles as s } from "../../../lib/booking-styles";
+import { DRESS_CODE_KEY, MOBILITY_KEY, SERVICE_TITLE_KEY } from "../../../lib/enum-labels";
 
 interface Brief {
   mission_id: string;
@@ -158,7 +159,9 @@ export default function OfferScreen() {
 
         <View style={s.card}>
           <Text style={s.label}>{t("agentApp.service")}</Text>
-          <Text style={s.cardTitle}>{brief.service_key}</Text>
+          <Text style={s.cardTitle}>
+            {SERVICE_TITLE_KEY[brief.service_key] ? t(SERVICE_TITLE_KEY[brief.service_key]) : brief.service_key}
+          </Text>
 
           <Text style={s.label}>{t("agentApp.pickupZone")}</Text>
           <Text style={s.cardDesc}>{brief.city}</Text>
@@ -172,10 +175,12 @@ export default function OfferScreen() {
           ) : null}
 
           <Text style={s.label}>{t("agentApp.dress")}</Text>
-          <Text style={s.cardDesc}>{brief.dress_code}</Text>
+          <Text style={s.cardDesc}>
+            {DRESS_CODE_KEY[brief.dress_code] ? t(DRESS_CODE_KEY[brief.dress_code]) : brief.dress_code}
+          </Text>
 
           <Text style={s.label}>{t("agentApp.vehicle")}</Text>
-          <Text style={s.cardDesc}>{brief.mobility}</Text>
+          <Text style={s.cardDesc}>{MOBILITY_KEY[brief.mobility] ? t(MOBILITY_KEY[brief.mobility]) : brief.mobility}</Text>
         </View>
 
         {error ? <Text style={s.error}>{error}</Text> : null}
